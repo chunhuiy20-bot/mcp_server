@@ -130,7 +130,7 @@ multi_db = MultiAsyncDBManager()
 # 添加不同的数据库
 multi_db.add_database("main", os.getenv("MYSQL_CONFIG_ASYNC"))
 multi_db.add_database("db2", os.getenv("MYSQL_CONFIG_ASYNC2"))
-
+multi_db.add_database("finance_db", os.getenv("MYSQL_CONFIG_ASYNC_FINANCE_DB"))
 
 
 #

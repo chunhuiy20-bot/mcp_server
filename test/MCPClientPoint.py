@@ -1,5 +1,4 @@
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langchain.agents import create_agent
 
 client = MultiServerMCPClient(
     {

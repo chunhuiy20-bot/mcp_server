@@ -15,7 +15,7 @@ class SQLHandlerAbstract(ABC):
         pass
 
     @abstractmethod
-    async def add_data(self, params: Optional[dict] = None):
+    async def add_one_data(self, params: Optional[dict] = None):
         """
             执行SQL语句
             :param params: 参数

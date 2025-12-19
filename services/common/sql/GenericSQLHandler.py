@@ -106,7 +106,7 @@ class GenericSQLHandler(SQLHandlerAbstract, Generic[T]):
             return Result(code=200, message="SQL执行成功", data=result.rowcount)
 
     @DBExceptionHandler
-    async def add_data(self, instance: T):
+    async def add_one_data(self, instance: T):
         """新增数据（使用ORM方式）"""
         if instance is None:
             return Result(code=500, message="实例不能为空")

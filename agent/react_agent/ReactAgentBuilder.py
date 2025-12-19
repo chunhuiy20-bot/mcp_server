@@ -1,53 +1,186 @@
-import traceback
 from dataclasses import dataclass, field
 from typing import List
 import os
 from dotenv import load_dotenv
+from langchain.agents import create_agent
 from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import MemorySaver
+from agent.react_agent.EnhanceTool import EnhanceTool
 
 load_dotenv()
+
 
 @dataclass
 class MCPConfig:
     server_name: str
     server_url: str
     transport: str
-    # 是否必要
+    # 是否必要，如果必要,但是却无法获取到服务器就会创建失败
     is_necessary: bool = False
+
 
 @dataclass
 class LLMConfig:
     openai_api_key: str = field(default=os.getenv("OPENAI_API_KEY"))
     openai_api_base: str = field(default=os.getenv("OPENAI_API_BASE"))
-    model:str = field(default="gpt-4.1")
+    model: str = field(default="gpt-4.1")
     temperature: float = field(default=0.0)
+
+
+@dataclass
+class MemoryConfig:
+    enable_memory: bool = field(default=False)
+    memory_type: str = field(default="MemorySaver")
+    max_history_limit: int = field(default=100)
+
 
 @dataclass
 class ReactAgentConfig:
-    user_id: str  #todo  这个好像不是必须的 后面可以修改
     agent_name: str = "ReactAgent"
     system_prompt: str = "你是一个AI助手"
     llm_config: LLMConfig = field(default_factory=LLMConfig)
     mcp_configs: List[MCPConfig] = field(default_factory=list)
-    enable_memory: bool = True
+    memory_config: MemoryConfig = field(default_factory=MemoryConfig)
+
 
 class ReactAgent:
-    def __init__(self, config: ReactAgentConfig):
+    def __init__(self, config: ReactAgentConfig, user_id: str):
         self.config = config
+        self.user_id = user_id  # 每个实例绑定一个用户ID
         self.mcp_client = None
-        self.tools = []
+        self._raw_tools = []
+        self._initialized = False
 
+        self._enhanced_tools = None  # 缓存增强工具
+        self._agent = None  # 缓存agent实例
+        self._cache_enabled = True  # 缓存开关
+
+        # 初始化记忆组件
+        self.checkpointer = self._init_memory()
+
+    async def chat(self, user_input: str, **kwargs):
+        """聊天方法 - 不需要传user_id了"""
+        agent = await self._get_agent()
+        _checkpointer_config = None
+        if self.checkpointer is not None:
+            if unique_identifier := kwargs.get("unique_identifier"):
+                _checkpointer_config = await self._get_checkpointer_config(unique_identifier)
+            else:
+                _checkpointer_config = await self._get_checkpointer_config(self.user_id)
+        print(agent.get_prompts())
+        res = await agent.ainvoke({"messages": [{"role": "user", "content": user_input}]}, config=_checkpointer_config)
+        return res["messages"][-1].content
 
     async def chat_stream(self, user_input: str):
-        return user_input
+        """流式聊天方法"""
+        agent = await self._get_agent()
+        async for chunk in agent.astream({"messages": [{"role": "user", "content": user_input}]}):
+            yield chunk
 
-    async def chat(self, user_input: str):
-        return user_input
+    async def update_config(self, new_config: ReactAgentConfig):
+        """更新配置，如果有变化则重新加载工具"""
+        if new_config == self.config:
+            print(f"用户 {self.user_id} - 配置未改变，无需重新加载工具")
+            return
+        else:
+            print(f"用户 {self.user_id} - 配置已改变，重新加载工具...")
+            self.config = new_config
+            await self._reload_tools()
 
-    async def get_config(self):
-        return self.config
+    # todo “User Bio” and “Model Set Context” 用户个性化
+    async def call_msc(self):
+        pass
 
-    async def init_mcp(self):
+    def _init_memory(self):
+        """初始化记忆组件"""
+        if not self.config.memory_config.enable_memory:
+            print(f"用户 {self.user_id} - 记忆功能已禁用")
+            return None
+
+        memory_type = self.config.memory_config.memory_type
+
+        if memory_type == "MemorySaver":
+            checkpointer = MemorySaver()
+            print(f"用户 {self.user_id} - 使用内存记忆 (MemorySaver)")
+        else:
+            print(f"用户 {self.user_id} - 未知的记忆类型 {memory_type}，使用默认内存记忆")
+            checkpointer = MemorySaver()
+        return checkpointer
+
+    # noinspection PyMethodMayBeStatic
+    async def _get_checkpointer_config(self, unique_identifier: str):
+        """获取记忆组件的配置"""
+        if unique_identifier is None:
+            return None
+        checkpointer_config = {"configurable": {"thread_id": unique_identifier}}
+        return checkpointer_config
+
+    async def _ensure_initialized(self):
+        """确保基础初始化完成"""
+        if not self._initialized:
+            await self._init_raw_mcp()
+            self._initialized = True
+
+    async def _get_enhanced_tools(self):
+        """获取增强工具（带缓存）"""
+        await self._ensure_initialized()
+
+        # 检查缓存
+        if self._cache_enabled and self._enhanced_tools is not None:
+            print(f"从缓存获取用户 {self.user_id} 的工具")
+            return self._enhanced_tools
+
+        # 创建新增强工具
+        enhanced_tools = []
+        for tool in self._raw_tools:
+            enhanced_tool = EnhanceTool(tool, self.user_id)
+            enhanced_tools.append(enhanced_tool)
+
+        # 缓存工具
+        if self._cache_enabled:
+            self._enhanced_tools = enhanced_tools
+            print(f"为用户 {self.user_id} 创建并缓存了 {len(enhanced_tools)} 个工具")
+
+        return enhanced_tools
+
+    async def _get_agent(self):
+        """获取agent实例（带缓存）"""
+        # 检查缓存
+        if self._cache_enabled and self._agent is not None:
+            print(f"从缓存获取用户 {self.user_id} 的agent")
+            return self._agent
+
+        # 创建新的agent
+        tools = await self._get_enhanced_tools()
+
+        agent = create_agent(
+            name=self.config.agent_name,
+            system_prompt=self.config.system_prompt,   # todo 这个最好不要固定，而是使用动态增强
+            model=ChatOpenAI(
+                model=self.config.llm_config.model,
+                temperature=self.config.llm_config.temperature,
+                api_key=self.config.llm_config.openai_api_key,
+                base_url=self.config.llm_config.openai_api_base
+            ),
+            tools=tools,
+            checkpointer=self.checkpointer
+        )
+
+        # 缓存agent
+        if self._cache_enabled:
+            self._agent = agent
+            print(f"为用户 {self.user_id} 创建并缓存了agent")
+
+        return agent
+
+    def _clear_cache(self):
+        """清理缓存"""
+        self._enhanced_tools = None
+        self._agent = None
+        print(f"已清理用户 {self.user_id} 的缓存")
+
+    async def _init_raw_mcp(self):
         """初始化MCP客户端并加载工具"""
         if not self.config.mcp_configs or len(self.config.mcp_configs) == 0:
             return []
@@ -63,42 +196,43 @@ class ReactAgent:
         try:
             # 创建MCP客户端
             self.mcp_client = MultiServerMCPClient(mcp_servers)
-            print(f"MCP客户端初始化完成，共 {len(mcp_servers)} 个服务器")
+            print(f"用户 {self.user_id} - MCP客户端初始化完成，共 {len(mcp_servers)} 个服务器")
 
             # 从每个服务器加载工具
             for mcp_config in self.config.mcp_configs:
                 server_name = mcp_config.server_name
                 try:
                     # 加载工具
-                    raw_tools = await self.mcp_client.get_tools(
-                        server_name=server_name
-                    )
-                    print(f"从 {server_name}加载了 {len(raw_tools)} 个工具")
+                    raw_tools = await self.mcp_client.get_tools(server_name=server_name)
+                    print(f"用户 {self.user_id} - 从 {server_name}加载了 {len(raw_tools)} 个工具")
                     for tool in raw_tools:
-                        self.tools.append(tool)
+                        self._raw_tools.append(tool)
 
                 except Exception as e:
-                    print(f"从 {server_name} 加载工具失败:{e}")
+                    print(f"用户 {self.user_id} - 从 {server_name} 加载工具失败:{e}")
                     if mcp_config.is_necessary:
-                        # 必要服务器加载失败, 则停止程序
                         raise e
                     continue
 
-            print(f"总共加载了 {len(self.tools)} 个工具")
-            return self.tools
+            print(f"用户 {self.user_id} - 总共加载了 {len(self._raw_tools)} 个工具")
+            return self._raw_tools
 
         except Exception as e:
-            print(f"MCP客户端初始化失败:{e}")
+            print(f"用户 {self.user_id} - MCP客户端初始化失败:{e}")
             return []
+
+    async def _reload_tools(self):
+        """重新加载工具"""
+        print(f"用户 {self.user_id} - 重新加载工具，清理缓存...")
+        self._initialized = False
+        self._raw_tools.clear()
+        self._clear_cache()
+        await self._ensure_initialized()
 
 
 class ReactAgentBuilder:
-    def __init__(self, user_id: str):
-        self._config = ReactAgentConfig(user_id=user_id)
-
-    def with_agent_name(self, name: str):
-        self._config.agent_name = name
-        return self
+    def __init__(self, agent_name: str):
+        self._config = ReactAgentConfig(agent_name=agent_name)
 
     def with_system_prompt(self, prompt: str):
         self._config.system_prompt = prompt
@@ -112,22 +246,27 @@ class ReactAgentBuilder:
         self._config.mcp_configs.append(mcp_config)
         return self
 
-    def enable_memory(self, enabled: bool = True):
-        self._config.enable_memory = enabled
+    def with_memory_config(self, memory_config: MemoryConfig):
+        self._config.memory_config = memory_config
         return self
 
-    async def build(self):
-        return ReactAgent(self._config)
-
+    async def build(self, user_id: str):  # 现在需要传入user_id
+        return ReactAgent(self._config, user_id)
 
 
 async def main():
-    react_agent = (await ReactAgentBuilder(user_id="1").with_agent_name("ReactAgent")
-                   .enable_memory(True).with_llm_config(LLMConfig()).
-                   with_mcp_config(MCPConfig(server_name="TransactionMCP", server_url="http://localhost:8001/mcp", transport="http",is_necessary=True)).build())
-    print(react_agent.tools)
+    react_agent = (await ReactAgentBuilder(agent_name="test_agent")
+                   .with_memory_config(MemoryConfig(enable_memory=True))
+                   .with_llm_config(LLMConfig())
+                   .with_mcp_config(MCPConfig(server_name="TransactionMCP", server_url="http://localhost:8001/mcp", transport="http", is_necessary=True))
+                   .build("1008611"))
+
+    print(await react_agent.chat("向所有人问好"))
+
+    print(await react_agent.chat("我给你的上一个指令是什么？"))
 
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

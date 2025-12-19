@@ -354,9 +354,9 @@ async def get_user_summary(user_id: int, days: int = 30) -> str:
 
 
 @mcp.tool()
-async def test_dont_user_id(user_id: int) -> str:
+async def say_hello_to_user(user_id: int) -> str:
     """
-    测试不传入user_id的情况
+    传入用户id，say hello
 
     Args:
         user_id: 用户ID（由AI服务传入）
@@ -364,7 +364,19 @@ async def test_dont_user_id(user_id: int) -> str:
     Returns:
         测试结果
     """
-    return "你好"
+    print(f"入参:{user_id}")
+    return f"你好:{user_id}"
+
+
+@mcp.tool()
+async def say_hello_to_everyone() -> str:
+    """
+    测试不传入user_id的情况
+
+    Returns:
+        测试结果
+    """
+    return "你好，所有人！"
 
 
 if __name__ == "__main__":
