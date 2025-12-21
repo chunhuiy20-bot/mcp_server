@@ -6,6 +6,7 @@ from langchain.agents import create_agent
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
+from agent.AIChatAbstract import AIChatAbstract
 from agent.react_agent.EnhanceTool import EnhanceTool
 
 load_dotenv()
@@ -44,7 +45,7 @@ class ReactAgentConfig:
     memory_config: MemoryConfig = field(default_factory=MemoryConfig)
 
 
-class ReactAgent:
+class ReactAgent(AIChatAbstract):
     def __init__(self, config: ReactAgentConfig, user_id: str):
         self.config = config
         self.user_id = user_id  # 每个实例绑定一个用户ID
@@ -207,12 +208,12 @@ class ReactAgent:
                     print(f"用户 {self.user_id} - 从 {server_name}加载了 {len(raw_tools)} 个工具")
                     for tool in raw_tools:
                         self._raw_tools.append(tool)
-
                 except Exception as e:
                     print(f"用户 {self.user_id} - 从 {server_name} 加载工具失败:{e}")
                     if mcp_config.is_necessary:
                         raise e
-                    continue
+                    else:
+                        continue
 
             print(f"用户 {self.user_id} - 总共加载了 {len(self._raw_tools)} 个工具")
             return self._raw_tools
