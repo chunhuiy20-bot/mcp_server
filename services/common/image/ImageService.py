@@ -3,7 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 from utils.OpenAIClientGenerator import OpenAIClientGenerator
 
-system_prompt= [
+system_prompt = [
     {
         "role": "system",
         "content": """
@@ -88,8 +88,8 @@ class ImageService:
                         "content": system_prompt[0]["content"]
                     },
                     {
-                    "role": "user",
-                    "content": content
+                        "role": "user",
+                        "content": content
                     }
                 ],
                 response_format=MultiImageDescription,
@@ -99,9 +99,7 @@ class ImageService:
 
             # 提取响应文本
             result: MultiImageDescription = response.choices[0].message.parsed
-            print(result.summary)
-            for description in result.images:
-                print(f"图片{description.image_index}描述：{description.image_description_detail}")
+
             return result
 
         except Exception as e:

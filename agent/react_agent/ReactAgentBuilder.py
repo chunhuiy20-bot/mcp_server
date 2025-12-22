@@ -69,11 +69,11 @@ class ReactAgent(AIChatAbstract):
                 _checkpointer_config = await self._get_checkpointer_config(unique_identifier)
             else:
                 _checkpointer_config = await self._get_checkpointer_config(self.user_id)
-        print(agent.get_prompts())
-        res = await agent.ainvoke({"messages": [{"role": "user", "content": user_input}]}, config=_checkpointer_config)
+        user_input_dict = await self._bulid_user_input(user_input, **kwargs)
+        res = await agent.ainvoke(input=user_input_dict, config=_checkpointer_config)
         return res["messages"][-1].content
 
-    async def chat_stream(self, user_input: str):
+    async def chat_stream(self, user_input: str, **kwargs):
         """流式聊天方法"""
         agent = await self._get_agent()
         async for chunk in agent.astream({"messages": [{"role": "user", "content": user_input}]}):
@@ -92,6 +92,25 @@ class ReactAgent(AIChatAbstract):
     # todo “User Bio” and “Model Set Context” 用户个性化
     async def call_msc(self):
         pass
+
+    # noinspection PyMethodMayBeStatic
+    async def _bulid_user_input(self, user_input: str, **kwargs):
+        image_list = kwargs.get("image_list", [])
+        # 如果没有图片，返回简单的文本消息
+        if not image_list or len(image_list) == 0:
+            return {"messages": [{"role": "user", "content": user_input}]}
+        content = [
+            {"type": "text", "text": user_input}
+        ]
+        for image_url in image_list:
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": image_url}
+            })
+
+        return {"messages": [{"role": "user", "content": content}]}
+
+
 
     def _init_memory(self):
         """初始化记忆组件"""
@@ -262,10 +281,12 @@ async def main():
                    .with_mcp_config(MCPConfig(server_name="TransactionMCP", server_url="http://localhost:8001/mcp", transport="http", is_necessary=True))
                    .build("1008611"))
 
-    print(await react_agent.chat("向所有人问好"))
+    print(await react_agent.chat(user_input="这两张图片是什么",
+                                 image_list=["https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTPq1dP1m4_7I-yGmGHxnyMmtgVLE9EB_PUiQ&s","https://rimage.gnst.jp/livejapan.com/public/article/detail/a/00/00/a0000276/img/basic/a0000276_main.jpg"]))
 
-    print(await react_agent.chat("我给你的上一个指令是什么？"))
+    print(await react_agent.chat("那这张呢？这个道题的答案是什么", image_list=["https://blog.amazingtalker.com/wp-content/uploads/2022/09/%E4%BB%A3%E5%85%A5%E6%B6%88%E5%8E%BB%E6%B3%95.png"]))
 
+    print(await react_agent.chat("按照这三张图，写一段看图说话的小作文"))
 
 if __name__ == "__main__":
     import asyncio

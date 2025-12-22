@@ -50,20 +50,19 @@ class EnhancedAIChat:
         # 1. 输入处理
         input_strategy = self._input_strategies.get(input_type)
         if not input_strategy:
-            return Result(code = AIBusinessErrorCode.UNSUPPORTED_INPUT_TYPE.code, message = AIBusinessErrorCode.UNSUPPORTED_INPUT_TYPE.message)
-        text_input = await input_strategy.process(user_input)
-        print(f"输入处理完成，转换后的文本: {text_input}")
-
+            return Result(code=AIBusinessErrorCode.UNSUPPORTED_INPUT_TYPE.code, message=AIBusinessErrorCode.UNSUPPORTED_INPUT_TYPE.message)
+        text_input_result = await input_strategy.process(data=user_input, **kwargs)
+        if text_input_result.code != 200:
+            return text_input_result
         # 2.调用智能体
-        text_output = await self.base_agent.chat(text_input, **kwargs)
-        print(f"ai输出后的文本: {text_output}")
+        text_output = await self.base_agent.chat(text_input_result.data, **kwargs)
 
         # 3.输出处理
         output_strategy = self._output_strategies.get(output_type)
         if not output_strategy:
-            return Result(code = AIBusinessErrorCode.UNSUPPORTED_OUTPUT_TYPE.code, message = AIBusinessErrorCode.UNSUPPORTED_OUTPUT_TYPE.message)
+            return Result(code=AIBusinessErrorCode.UNSUPPORTED_OUTPUT_TYPE.code, message=AIBusinessErrorCode.UNSUPPORTED_OUTPUT_TYPE.message)
         final_output = await output_strategy.process(text_output)
-        print(f"输出处理完成，最终输出: {final_output}")
+
         return final_output
 
     async def chat_stream(self, chat_input: str, **kwargs):
@@ -106,8 +105,20 @@ async def main():
     enhanced_agent = EnhancedAIChat(react_agent)
 
     # 3. 场景1：文本输入 -> 文本输出（默认）
-    response1 = await enhanced_agent.chat("你好，介绍一下自己",)
-    print(response1)
+    # response1 = await enhanced_agent.chat(user_input="你好，这道题怎么做", image_list=["https://blog.amazingtalker.com/wp-content/uploads/2022/09/%E4%BB%A3%E5%85%A5%E6%B6%88%E5%8E%BB%E6%B3%95.png"])
+    # print(response1)
+
+    # 4. 场景2：语音bytes输入 -> 文本输出
+    with open("./io_strategy/input_strategy/simple_speech.mp3", "rb") as f:
+        audio_bytes = f.read()  # 这是 bytes 类型
+    print(audio_bytes[:10])
+    response2 = await enhanced_agent.chat(user_input=audio_bytes, input_type=InputType.VOICE.value, output_type=OutputType.TEXT.value)
+    print(response2)
+
+    # 5. 场景3：语音url输入 -> 文本输出
+    # response3 = await enhanced_agent.chat(user_input=None, voice_url="https://hdd-ai-image.oss-cn-beijing.aliyuncs.com/local_temp_documents/simple_speech.mp3", input_type=InputType.VOICE.value, output_type=OutputType.TEXT.value)
+    # print(response3)
+
 
 
 if __name__ == "__main__":

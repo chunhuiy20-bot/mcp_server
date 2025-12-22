@@ -21,7 +21,7 @@ class OpenAIClientGenerator(AIClientGenerator):
         self._async_unofficial_client = None
         self._sync_unofficial_client = None
 
-    async def get_async_client(self) -> AsyncOpenAI:
+    def get_async_client(self) -> AsyncOpenAI:
         """获取官方异步客户端（单例）"""
         if self._async_client is None:
             self._async_client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
