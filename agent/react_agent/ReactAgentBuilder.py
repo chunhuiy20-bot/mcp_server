@@ -278,15 +278,18 @@ async def main():
     react_agent = (await ReactAgentBuilder(agent_name="test_agent")
                    .with_memory_config(MemoryConfig(enable_memory=True))
                    .with_llm_config(LLMConfig())
-                   .with_mcp_config(MCPConfig(server_name="TransactionMCP", server_url="http://localhost:8001/mcp", transport="http", is_necessary=True))
+                   .with_system_prompt("你是一个助手。如果有必要，请有序调用用户。如果有网络搜索的消息请包涵信息来源，以markdown格式回复")
+                   .with_mcp_config(MCPConfig(server_name="WebSearchMCP", server_url="http://localhost:8001/mcp", transport="http", is_necessary=True))
+                   .with_mcp_config(MCPConfig(server_name="ImageMCP", server_url="http://localhost:8002/mcp", transport="http", is_necessary=True))
                    .build("1008611"))
 
-    print(await react_agent.chat(user_input="这两张图片是什么",
-                                 image_list=["https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTPq1dP1m4_7I-yGmGHxnyMmtgVLE9EB_PUiQ&s","https://rimage.gnst.jp/livejapan.com/public/article/detail/a/00/00/a0000276/img/basic/a0000276_main.jpg"]))
+    # print(await react_agent.chat(user_input="这两张图片是什么",
+    #                              image_list=["https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTPq1dP1m4_7I-yGmGHxnyMmtgVLE9EB_PUiQ&s","https://rimage.gnst.jp/livejapan.com/public/article/detail/a/00/00/a0000276/img/basic/a0000276_main.jpg"]))
+    #
+    # print(await react_agent.chat("那这张呢？这个道题的答案是什么", image_list=["https://blog.amazingtalker.com/wp-content/uploads/2022/09/%E4%BB%A3%E5%85%A5%E6%B6%88%E5%8E%BB%E6%B3%95.png"]))
 
-    print(await react_agent.chat("那这张呢？这个道题的答案是什么", image_list=["https://blog.amazingtalker.com/wp-content/uploads/2022/09/%E4%BB%A3%E5%85%A5%E6%B6%88%E5%8E%BB%E6%B3%95.png"]))
-
-    print(await react_agent.chat("按照这三张图，写一段看图说话的小作文"))
+    # print(await react_agent.chat("BTC市场情绪怎么样"))
+    print(await react_agent.chat("给我一张石原里美风格的美女图片"))
 
 if __name__ == "__main__":
     import asyncio
