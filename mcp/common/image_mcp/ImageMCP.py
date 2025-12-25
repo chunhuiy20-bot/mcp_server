@@ -34,10 +34,11 @@ async def image_generation(prompt: str, n: int = 1):
 
         responses = await asyncio.gather(*tasks)
         image_urls = [response.data[0].url for response in responses]
-
+        print(f"图片地址：{image_urls}")
         return Result(code=200, message="生成图片成功", data=image_urls)
     except Exception as e:
         return Result(code=500, message=f"生成图片失败:{e}", data=[])
+
 
 
 if __name__ == "__main__":
