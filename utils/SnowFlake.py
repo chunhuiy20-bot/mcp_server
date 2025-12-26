@@ -25,6 +25,7 @@
 import time
 import threading
 
+
 class SnowflakeIDGenerator:
     def __init__(self, worker_id=1, datacenter_id=1):
         # 自定义起始时间戳（毫秒）

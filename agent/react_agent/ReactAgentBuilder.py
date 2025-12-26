@@ -278,10 +278,11 @@ async def main():
     react_agent = (await ReactAgentBuilder(agent_name="test_agent")
                    .with_memory_config(MemoryConfig(enable_memory=True))
                    .with_llm_config(LLMConfig())
-                   .with_system_prompt("你是一个助手。如果有必要，请有序调用用户。如果有网络搜索的消息请包涵信息来源，以markdown格式回复")
+                   .with_system_prompt("你是一个助手。如果有必要，请有序调用方法。如果有网络搜索的消息请包涵信息来源，以markdown格式回复，如果有未知的信息可以先进行长期记忆查找。")
                    .with_mcp_config(MCPConfig(server_name="WebSearchMCP", server_url="http://localhost:8001/mcp", transport="http", is_necessary=True))
                    .with_mcp_config(MCPConfig(server_name="ImageMCP", server_url="http://localhost:8002/mcp", transport="http", is_necessary=True))
                    .with_mcp_config(MCPConfig(server_name="DocumentMCP", server_url="http://localhost:8003/mcp", transport="http", is_necessary=True))
+                    .with_mcp_config(MCPConfig(server_name="LongMemoryMCP", server_url="http://localhost:8004/mcp", transport="http", is_necessary=True))
                    .build("1008611"))
 
     # print(await react_agent.chat(user_input="这两张图片是什么",
@@ -293,7 +294,9 @@ async def main():
     # print(await react_agent.chat("查询一下今天的热点新闻，然后根据情况生成一些合适的图片，并给我整理成一个文档，我要用来做自媒体的稿子，图片地址要完整后面接的参数不能少，否则是无法访问的，md格式"))
     # print(await react_agent.chat("我当前文件夹下有什么，读取一下md文件，告诉我他写了什么"))
 
-    print(await react_agent.chat("把我当前的热点新闻文稿修改一下标题，改为“澎湃-2024年6月热门资讯快报”"))
+    print(await react_agent.chat("我的好朋友有谁"))
+    # print(await react_agent.chat("我之前给过你”"))
+    # print(await react_agent.chat("你调用工具查呀”"))
 
 
 

@@ -13,7 +13,6 @@ async def search_files(directory: str = ".", pattern: str = "*", recursive: bool
         recursive: 是否递归搜索子目录，默认为True
     """
     from pathlib import Path
-    import fnmatch
 
     try:
         search_path = Path(directory)
