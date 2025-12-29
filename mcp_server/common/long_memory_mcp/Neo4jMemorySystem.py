@@ -15,9 +15,9 @@ class Neo4jConnection:
 
 
 # 连接配置
-URI = "neo4j+s://d0da9c00.databases.neo4j.io"  # 替换为你的 GCP Neo4j 地址
+URI = "neo4j+s://3ce4238f.databases.neo4j.io"  # 替换为你的 GCP Neo4j 地址
 USER = "neo4j"  # 默认用户名
-PASSWORD = "if-1b7h7hV-stFoCNOrCliBlc4AM-rEyrn9gEomG-Yk"  # 替换为你的密码
+PASSWORD = "h1NGAuHxR1NYyxKUWrp6enfj_o_vTENnbkREYk8jcH4"  # 替换为你的密码
 
 # 创建连接
 conn = Neo4jConnection(URI, USER, PASSWORD)
