@@ -36,7 +36,7 @@ class AliyunOssService(OssServiceAbstract):
 
         self.auth = oss2.Auth(self.access_key_id, self.access_key_secret)
 
-    def _get_bucket(self, bucket_name: Optional[str] = "hdd-ai-image") -> oss2.Bucket:
+    def _get_bucket(self, bucket_name: Optional[str] = "hdd-agent-image") -> oss2.Bucket:
         """
         获取Bucket对象
         :param bucket_name: 存储桶名称
@@ -44,7 +44,7 @@ class AliyunOssService(OssServiceAbstract):
         """
         return oss2.Bucket(self.auth, self.endpoint, bucket_name)
 
-    async def upload_file(self, file_path: str, object_name: Optional[str] = 'local_temp_documents/', bucket_name: Optional[str] = "hdd-ai-image") -> Result:
+    async def upload_file(self, file_path: str, object_name: Optional[str] = 'local_temp_documents/', bucket_name: Optional[str] = "hdd-agent-image") -> Result:
         """
         上传文件到阿里云OSS
         :param file_path: 本地文件路径

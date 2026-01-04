@@ -16,7 +16,7 @@ class FastApiWithNacos:
         self.nacos_password = os.getenv("NACOS_PASSWORD", "haoduanduan2025@.")
         self.nacos_namespace = os.getenv("NACOS_NAMESPACE", "")
 
-        self.service_name = os.getenv("SERVICE_NAME", title or "hdd-ai-module")
+        self.service_name = os.getenv("SERVICE_NAME", title or "hdd-agent-module")
         self.service_group = os.getenv("SERVICE_GROUP", "DEFAULT_GROUP")
         self.port = int(os.getenv("SERVICE_PORT", 8000))
         self.ip = os.getenv("SERVICE_IP", self._get_local_ip())
