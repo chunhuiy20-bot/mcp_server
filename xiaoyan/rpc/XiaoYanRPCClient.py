@@ -89,7 +89,7 @@ async def main():
     print(f"Code: {result.code}")
     print(f"Message: {result.message}")
     print(f"用户数量: {len(result.data.history_chat_list)}")
-
+    print(result.data.history_chat_list[0].chat_history)
     # 打印每个用户的聊天记录
     for user_chat in result.data.history_chat_list:
         print(f"\n用户ID: {user_chat.user_id}")
