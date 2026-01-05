@@ -125,7 +125,7 @@ class PersonaConstructorWorkflow:
         except Exception as e:
             return Result(code=500, message=f"执行工作流失败: {e}", data=user_id)
 
-    async def scheduled_Task(self):
+    async def report_scheduled_Task(self):
         result: Result[UserHistoryChatList] = await self.xiao_yan_api_rpc_client.get_history_chat()
         if result.code != 200 and result.code != 0:
             # 获取聊天记录失败，无需后续逻辑
@@ -169,15 +169,16 @@ class PersonaConstructorWorkflow:
         )
 
 
+persona_constructor_workflow = PersonaConstructorWorkflow()
+
 # 使用示例
 async def main():
-    workflow = PersonaConstructorWorkflow()
     # user_history_chat_list: Result[UserHistoryChatList] = await xiao_yan_api_rpc_client.get_history_chat()
     # print(f"用户id: {user_history_chat_list.data.history_chat_list[0].user_id}")
     # print(f"用户历史聊天记录: {user_history_chat_list.data.history_chat_list[0].chat_history}")
 
 
-    print(await workflow.scheduled_Task())
+    print(await persona_constructor_workflow.report_scheduled_Task())
 
     # # 模拟两个不同用户的记录
     # for i in range(1):
