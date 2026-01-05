@@ -24,12 +24,21 @@ class XiaoYanAPIRPCClient:
         response.raise_for_status()
 
         result = response.json()
+        print("获取到聊天记录:", result)
+
+        # 检查 data 是否为空
+        if not result.get('data'):
+            return Result(
+                code=result['code'],
+                message=result['msg'],
+                data=UserHistoryChatList(history_chat_list=[])
+            )
 
         # 处理返回数据
         history_chat_list = []
 
         # 遍历 data 中的每个用户
-        for user_id, chat_list in result.get('data', {}).items():
+        for user_id, chat_list in result['data'].items():
             chat_history = []
 
             # 转换每条聊天记录

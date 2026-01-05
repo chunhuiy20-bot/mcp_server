@@ -66,7 +66,6 @@ class BaseVO(BaseModel):
     )
 
 
-
 # 2. Identity (MBTI & 核心能力)
 class MbtiVO(BaseVO):
     code: str = Field(..., description="MBTI代码, 如 INTJ")
@@ -91,12 +90,14 @@ class BigFiveScoresVO(BaseVO):
     agreeableness: int = Field(..., ge=0, le=100)
     stability: int = Field(..., ge=0, le=100)
 
+
 class PersonalityTag(BaseVO):
     label: str = Field(..., description="人格标签")
     color: str = Field(..., description="Hex 颜色值,e.g #ff0012")
 
+
 class SummaryVO(BaseVO):
-    title: str = Field(..., min_length=7,max_length=10, description="人格特质总结，eg. 安静且理性的探索者")
+    title: str = Field(..., min_length=7, max_length=20, description="人格特质总结，eg. 安静且理性的探索者")
     tags: List[PersonalityTag] = Field(..., description="人格标签")
     description: str = Field(..., description="详细的文本分析")
 
