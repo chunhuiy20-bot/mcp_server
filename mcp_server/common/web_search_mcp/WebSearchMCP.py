@@ -21,7 +21,7 @@ async def web_search(prompt: str):
 
         print(f"WebSearchMCP 接收到请求，入参：{prompt}")
         search_params = {
-            "model": "gpt-5-search-api",
+            "factory": "gpt-5-search-api",
             "web_search_options": {},
             "messages": [
                 {

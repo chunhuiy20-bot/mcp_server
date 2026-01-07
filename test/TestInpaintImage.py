@@ -223,7 +223,7 @@ correct_image_edit()
 #     # 4. 调用编辑 API
 #     try:
 #         response = client.images.edit(
-#             model="dall-e-2",
+#             factory="dall-e-2",
 #             image=open("original_rgba.png", "rb"),
 #             mask=open(mask_path, "rb"),
 #             prompt="a delicious sandwich with lettuce, tomato, and ham on a white plate",

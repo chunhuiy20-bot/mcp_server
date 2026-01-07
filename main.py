@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from config.scheduler.DynamicScheduler import scheduler
+from utils.common.scheduler.DynamicScheduler import scheduler
 from xiaoyan.router.XiaoYanRouter import router as xiao_yan_router
 
 @asynccontextmanager

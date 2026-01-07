@@ -1,3 +1,9 @@
+"""
+# 全局定时任务工具(可复用)
+# 原理: 配合fastapi路由和apscheduler库实现
+# 功能: 可以在程序运行时通过api动态控制定时任务的开启、暂停、恢复、结束和移除
+"""
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
@@ -5,7 +11,6 @@ from apscheduler.triggers.date import DateTrigger
 from typing import Callable, Optional, Dict, Any, List
 import logging
 from datetime import datetime
-import asyncio
 
 
 class DynamicScheduler:
@@ -269,5 +274,5 @@ class DynamicScheduler:
         self.logger.info("所有任务已清空")
 
 
-# 创建全局调度器实例
+# 创建全局实例
 scheduler = DynamicScheduler()

@@ -2,7 +2,6 @@
     通用ai服务api
     对于服务最好原子化，方便调用和管理，避免不必要的耦合
 """
-import asyncio
 from fastapi import Request
 from fastapi import Query
 from config.router.CustomRouter import CustomAPIRouter
@@ -14,6 +13,7 @@ router = CustomAPIRouter(
     tags=["TongXin 项目接口"]
 )
 
+
 async def start_report_scheduled_Task_func():
     print(f"[定时任务] 开启定时获取聊天记录并总结报告任务...")
     print(await persona_constructor_workflow.report_scheduled_Task())
@@ -24,9 +24,7 @@ async def start_report_scheduled_Task_func():
              summary="开启定时获取聊天记录并总结报告任务",
              description="开启定时获取聊天记录并总结报告任务",
              )
-async def start_report_scheduled_Task(request: Request,
-                             seconds: int = Query(default=300, description="清理间隔（秒）", ge=5,  le=86400,  example=300),
-                             job_id: str = Query(default="start_report_scheduled_Task", description="任务ID", example="start_report_scheduled_Task")) -> Result[dict]:
+async def start_report_scheduled_Task(request: Request, seconds: int = Query(default=300, description="清理间隔（秒）", ge=5,  le=86400,  example=300), job_id: str = Query(default="start_report_scheduled_Task", description="任务ID", example="start_report_scheduled_Task")) -> Result[dict]:
     """
     启动清理任务
     :param job_id: 定时任务id，没事不要改

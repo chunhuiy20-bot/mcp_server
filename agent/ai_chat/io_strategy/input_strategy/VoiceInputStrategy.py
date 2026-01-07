@@ -61,7 +61,7 @@ class VoiceInputStrategy(InputStrategy):
         """
         try:
             transcription_params = {
-                "model": kwargs.get('model', 'whisper-1'),
+                "factory": kwargs.get('factory', 'whisper-1'),
                 "file": audio_file,  # 传入 BytesIO 对象（不是 bytes）
                 "response_format": kwargs.get('response_format', 'text')
             }
