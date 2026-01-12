@@ -10,7 +10,7 @@ from xiaoyan.agent.workflow.PersonaConstructorWorkflow import persona_constructo
 
 router = CustomAPIRouter(
     prefix="/api/ai/xiaoyan",
-    tags=["TongXin 项目接口"]
+    tags=["XiaoYan 项目接口"]
 )
 
 

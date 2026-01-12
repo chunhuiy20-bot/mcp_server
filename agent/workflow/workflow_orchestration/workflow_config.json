@@ -1,0 +1,66 @@
+{
+  "name": "chat_workflow",
+  "description": "智能对话工作流",
+  "state_schema": {
+    "messages": {"type": "list", "reducer": "add_messages"},
+    "intent": {"type": "str"},
+    "output": {"type": "str"}
+  },
+  "entry_point": "intent_classifier",
+  "nodes": [
+    {
+      "name": "intent_classifier",
+      "type": "llm",
+      "config": {
+        "system_prompt": "分析用户意图，只返回以下类型之一: question, chat, task",
+        "model": "gpt-4.1",
+        "temperature": 0.0,
+        "need_structure_output": true,
+        "output_schema": {
+          "intent": {"type": "str", "description": "意图类型: question/chat/task"}
+        }
+      }
+    },
+    {
+      "name": "question_handler",
+      "type": "llm",
+      "config": {
+        "system_prompt": "你是一个知识问答助手，准确回答用户问题",
+        "model": "gpt-4.1",
+        "temperature": 0.3
+      }
+    },
+    {
+      "name": "chat_handler",
+      "type": "llm",
+      "config": {
+        "system_prompt": "你是一个友好的聊天助手，轻松愉快地与用户交流",
+        "model": "gpt-4.1",
+        "temperature": 0.7
+      }
+    },
+    {
+      "name": "task_handler",
+      "type": "code",
+      "config": {
+        "custom_code": "result = {'output': '任务已收到，正在处理中...'}"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "type": "conditional",
+      "source": "intent_classifier",
+      "condition_field": "intent",
+      "condition_map": {
+        "question": "question_handler",
+        "chat": "chat_handler",
+        "task": "task_handler"
+      },
+      "default": "chat_handler"
+    },
+    {"type": "normal", "source": "question_handler", "target": "END"},
+    {"type": "normal", "source": "chat_handler", "target": "END"},
+    {"type": "normal", "source": "task_handler", "target": "END"}
+  ]
+}

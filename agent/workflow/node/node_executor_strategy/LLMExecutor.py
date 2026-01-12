@@ -25,29 +25,45 @@ class LLMExecutor(NodeExecutor):
         output_schema = dynamic_model_factory.create(config=config.output_schema, model_name="CustomOutputModel")
         return output_schema
 
+    def _handle_input_data(self, input_data: Any, config: LLMConfig)->list:
+        """处理输入的消息"""
+        messages = [{"role": "system", "content": config.system_prompt}]
+
+        # 处理不同输入格式
+        if isinstance(input_data, dict):
+            # 从 state 提取消息历史
+            for msg in input_data.get("messages", []):
+                if hasattr(msg, "content"):
+                    role = "assistant" if "AI" in msg.__class__.__name__ else "user"
+                    messages.append({"role": role, "content": msg.content})
+                elif isinstance(msg, dict):
+                    messages.append(msg)
+        elif isinstance(input_data, str):
+            messages.append({"role": "user", "content": input_data})
+        elif isinstance(input_data, list):
+            messages.extend(input_data)
+
+        return messages
+
     async def execute(self, input_data: Any, config: LLMConfig) -> Any:
         """执行 LLM 节点"""
         self._init_llm_client(config)
+        messages = self._handle_input_data(input_data=input_data, config=config)
         if config.need_structure_output:
-            # 结构化输出
             response = await self.client.chat.completions.parse(
                 model=config.model,
-                messages=[
-                    {"role": "system", "content": config.system_prompt},
-                    {"role": "user", "content": input_data}
-                ],
+                messages=messages,
                 temperature=config.temperature,
                 response_format=self._get_output_schema(config)
             )
+            print(response.choices[0].message.parsed)
             return response.choices[0].message.parsed
         else:
-            # 非结构化输出
             response = await self.client.chat.completions.create(
                 model=config.model,
-                messages=[
-                    {"role": "system", "content": config.system_prompt},
-                    {"role": "user", "content": input_data}
-                ],
+                messages=messages,
                 temperature=config.temperature
             )
+            print(response.choices[0].message.content)
             return response.choices[0].message.content
+
