@@ -1,6 +1,6 @@
 import asyncio
 from typing import Dict, Any
-from agent.AIChatAbstract import AIChatAbstract
+from agent.ai_chat.AIChatAbstract import AIChatAbstract
 from agent.ai_chat.io_strategy.input_strategy.InputStrategy import InputStrategy
 from agent.ai_chat.io_strategy.input_strategy.InputType import InputType
 from agent.ai_chat.io_strategy.input_strategy.TextInputStrategy import TextInputStrategy

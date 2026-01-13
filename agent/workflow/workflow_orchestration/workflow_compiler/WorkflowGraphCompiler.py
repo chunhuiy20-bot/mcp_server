@@ -1,45 +1,11 @@
 from typing import Optional, Any, Dict, List
-from enum import Enum
-from dataclasses import dataclass, field
 from langgraph.graph import StateGraph, END
-from agent.workflow.node.UniversalNode import UniversalNode, UniversalNodeBuilder
+from agent.workflow.node.UniversalNode import UniversalNode
+from agent.workflow.node.UniversalNodeBuilder import UniversalNodeBuilder
 from agent.workflow.node.node_config.CodeConfig import CodeConfig
 from agent.workflow.node.node_config.LLMConfig import LLMConfig
-
-
-# ============ 边配置 ============
-class EdgeType(Enum):
-    NORMAL = "normal"  # 普通边
-    CONDITIONAL = "conditional"  # 条件边
-
-
-@dataclass
-class EdgeConfig:
-    """边配置"""
-    source: str  # 源节点名称
-    target: str  # 目标节点名称 (普通边)
-    edge_type: EdgeType = EdgeType.NORMAL
-
-
-@dataclass
-class ConditionalEdgeConfig(EdgeConfig):
-    """条件边配置"""
-    edge_type: EdgeType = EdgeType.CONDITIONAL
-    condition_field: str = ""  # 状态中用于判断的字段
-    condition_map: Dict[str, str] = field(default_factory=dict)  # 值 -> 目标节点映射
-    default_target: str = END  # 默认目标
-
-
-# ============ 图配置 ============
-@dataclass
-class GraphConfig:
-    """图配置"""
-    name: str
-    state_schema: Dict[str, Any]  # 状态 schema
-    nodes: List[Dict[str, Any]]  # 节点配置列表
-    edges: List[Dict[str, Any]]  # 边配置列表
-    entry_point: str  # 入口节点
-    description: str = ""
+from langchain_core.messages import AIMessage
+from agent.workflow.workflow_orchestration.workflow_config.GraphConfig import GraphConfig
 
 
 # ============ 图编译器 ============
@@ -208,13 +174,15 @@ class WorkflowGraphCompiler:
         for node_cfg in self.config.nodes:
             node_name = node_cfg["name"]
             node = self._nodes[node_name]
+            node_type = node_cfg.get("type")
             input_mapping = node_cfg.get("input_mapping", {})
             output_mapping = node_cfg.get("output_mapping", {})
             async def node_fn(
                     state: dict,
                     n=node,
                     in_map=input_mapping,
-                    out_map=output_mapping
+                    out_map=output_mapping,
+                    n_type=node_type
             ) -> dict:
                 # 1. 提取输入
                 input_data = self._extract_input(state, in_map)
@@ -223,7 +191,7 @@ class WorkflowGraphCompiler:
                 result = await n.run_node(input_data)
 
                 # 3. 映射输出
-                return self._map_output(result, out_map)
+                return self._map_output(result, out_map, node_type=n_type)
 
             self._graph.add_node(node_name, node_fn)
 
@@ -232,7 +200,6 @@ class WorkflowGraphCompiler:
         """
         根据配置文件中节点配置提取输入【重要部分】
         核心功能: 根据配置文件中节点的input_mapping提取输入，返回输入后，非常依赖UniversalNode节点对输入数据的处理
-
         """
         # 如果没有直接，直接返回state作为输入数据
         if not input_mapping:
@@ -282,38 +249,53 @@ class WorkflowGraphCompiler:
         return data
 
     # noinspection PyMethodMayBeStatic
-    def _map_output(self, result: Any, output_mapping: dict) -> dict:
-        """根据配置映射输出"""
+    def _map_output(self, result: Any, output_mapping: dict, node_type: str = None) -> dict:
+        """
+        根据配置映射输出
+        核心功能: 根据配置文件中节点的output_mapping提取输入
+        """
+        has_messages = "messages" in self.config.state_schema
+        output_dict = {}
+
+        # 处理基础输出
         if not output_mapping:
-            # 如果结果已经是 dict，直接返回
             if isinstance(result, dict):
-                return result
-            return {"output": result}
+                output_dict = result.copy()
+            else:
+                output_dict = {"output": result}
+        else:
+            target = output_mapping.get("target")
+            mode = output_mapping.get("mode", "replace")
 
-        target = output_mapping.get("target")
-        mode = output_mapping.get("mode", "replace")
+            if not target:
+                if isinstance(result, dict):
+                    output_dict = result.copy()
+                else:
+                    output_dict = {"output": result}
+            elif mode == "append":
+                output_dict = {target: [result]}
+            elif mode == "replace":
+                output_dict = {target: result}
+            elif mode == "message":
+                content = result if isinstance(result, str) else str(result)
+                output_dict = {"messages": [AIMessage(content=content)], target: result}
+                return output_dict  # message 模式已经处理了 messages，直接返回
+            else:
+                output_dict = {target: result}
 
-        if not target:
-            if isinstance(result, dict):
-                return result
-            return {"output": result}
-
-        if mode == "append":
-            # 追加到列表（配合 reducer: add）
-            return {target: [result]}
-        elif mode == "replace":
-            # 直接替换
-            return {target: result}
-        elif mode == "message":
-            # 作为消息追加
-            from langchain_core.messages import AIMessage
+        # 如果 state_schema 有 messages 且是 LLM 节点，自动追加 AIMessage
+        if has_messages and node_type == "llm" and "messages" not in output_dict:
             content = result if isinstance(result, str) else str(result)
-            return {"messages": [AIMessage(content=content)], target: result}
+            output_dict["messages"] = [AIMessage(content=content)]
 
-        return {target: result}
+        return output_dict
 
     def _add_edges(self):
-        """添加边"""
+        """
+        編排节点之间边的关系
+        核心功能：加载配置文件的edges上边的列表
+            1、编排节点之间边的关系，目前边有两种类型，正常的边(normal)与条件边(conditional)
+        """
         for edge_cfg in self.config.edges:
             edge_type = edge_cfg.get("type", "normal")
 

@@ -1,5 +1,5 @@
 # 每一个由一个小智能体构建而成
-from agent.AIChatAbstract import AIChatAbstract
+from agent.ai_chat.AIChatAbstract import AIChatAbstract
 from agent.react_agent.ReactAgentBuilder import ReactAgentBuilder
 from xiaoyan.agent.workflow.node.NodeAbstract import NodeAbstract
 from xiaoyan.agent.workflow.prompt.PersonaConstructorWorkflowAllPrompt import PersonaConstructorWorkflowAllPromptEN

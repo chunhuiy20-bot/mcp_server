@@ -21,6 +21,12 @@ class AIBusinessErrorCode(Enum):
     MCP_CONNECTION_FAILED = (50001, "MCP服务连接失败")
     MCP_TOOL_LOAD_FAILED = (50002, "MCP工具加载失败")
 
+    # workflow 编排错误 6xxx
+    WORKFLOW_CONFIG_ERROR = (60001, "工作流配置错误")
+
+    # checkpointer 配置错误 7xxx
+    MONGODB_CHECKPOINTER_CONNECT_ERROR = (70001, "mongodb检查点配置错误")
+
     def __init__(self, code: int, message: str):
         self.code = code
         self.message = message

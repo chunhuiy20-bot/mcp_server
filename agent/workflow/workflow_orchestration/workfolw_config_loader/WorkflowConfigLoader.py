@@ -6,14 +6,14 @@ workflow配置加载器
      4、检查构建的配置类是否符合规范
 """
 import json
-import asyncio
 from pathlib import Path
 from typing import Union, List
-
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 
-from agent.workflow.workflow_orchestration.WorkflowGraphCompiler import GraphConfig, WorkflowGraphCompiler
+from agent.memory.custom.redis.RedisDBCheckpointerManager import RedisDBCheckpointerManager
+from agent.memory.mogo.MongoDBCheckpointerManager import MongoDBCheckpointerManager
+from agent.workflow.workflow_orchestration.workflow_compiler.WorkflowGraphCompiler import GraphConfig, WorkflowGraphCompiler
 
 
 class WorkflowConfigLoader:
@@ -90,7 +90,7 @@ class WorkflowConfigLoader:
 
 async def main():
     # 加载配置
-    config = WorkflowConfigLoader.load_from_file("workflow_config.json")
+    config = WorkflowConfigLoader.load_from_file("../workflow_config.json")
 
     # 验证配置
     errors = WorkflowConfigLoader.validate_config(config)
@@ -120,7 +120,7 @@ async def main():
 
 async def main2():
     # 加载配置
-    config = WorkflowConfigLoader.load_from_file("workflow_config2.json")
+    config = WorkflowConfigLoader.load_from_file("../workflow_config2.json")
 
     # 验证配置
     errors = WorkflowConfigLoader.validate_config(config)
@@ -238,10 +238,55 @@ async def main3():
     }
     """)
     errors = WorkflowConfigLoader.validate_config(config)
+    print(errors)
     print(config)
 
+
+# 通用调用
+async def main4():
+
+    config = WorkflowConfigLoader.load_from_file("../workflow_config.json")
+
+    # 验证配置
+    errors = WorkflowConfigLoader.validate_config(config)
+    if errors:
+        for err in errors:
+            print(f"配置错误: {err}")
+        return
+
+    mongodb_checkpointer_manager = MongoDBCheckpointerManager()
+    mongodb_checkpointer = mongodb_checkpointer_manager.get_checkpointer()
+    redis_checkpointer_manager = RedisDBCheckpointerManager()
+    redis_checkpointer = redis_checkpointer_manager.get_checkpointer()
+
+    from typing import List
+    from pydantic import BaseModel
+    try:
+        class Message(BaseModel):
+            role: str
+            content: str
+
+        class ChatRequestDTO(BaseModel):
+            messages: List[Message]
+            intent: str = ""
+            output: str = ""
+
+        request_dto = ChatRequestDTO(
+            messages=[
+                Message(role="user", content="你还记得我叫什么名字吗")
+            ],
+            intent="",
+            output=""
+        )
+        thread_config: RunnableConfig = {"configurable": {"thread_id": "26945641"}}
+        # 编译并运行
+        compiler = WorkflowGraphCompiler(config)
+        graph = await compiler.compile(redis_checkpointer)
+        print(await graph.ainvoke(request_dto.model_dump(), config=thread_config))
+    finally:
+        await redis_checkpointer_manager.cleanup()
 
 
 if __name__ == "__main__":
     import asyncio
-    asyncio.run(main2())
+    asyncio.run(main4())

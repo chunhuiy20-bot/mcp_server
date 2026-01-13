@@ -6,7 +6,7 @@ from langchain.agents import create_agent
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
-from agent.AIChatAbstract import AIChatAbstract
+from agent.ai_chat.AIChatAbstract import AIChatAbstract
 from agent.react_agent.EnhanceTool import EnhanceTool
 
 load_dotenv()
