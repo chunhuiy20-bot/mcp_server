@@ -1,0 +1,151 @@
+{
+  "name": "persona_constructor_workflow",
+  "description": "人格画像构建工作流 - 并行执行Big Five、MBTI、盖洛普分析后整合输出",
+  "state_schema": {
+    "user_history_chat_list": {"type": "list"},
+    "analysis_results": {"type": "list", "reducer": "add"},
+    "final_report": {"type": "dict"},
+    "user_id": {"type": "str"}
+  },
+  "entry_point": "start",
+  "nodes": [
+    {
+      "name": "start",
+      "type": "code",
+      "config": {
+        "custom_code": "result = {'analysis_results': []}"
+      },
+      "output_mapping": {}
+    },
+    {
+      "name": "big_five",
+      "type": "llm",
+      "config": {
+        "system_prompt": "1. Role: A professional and rigorous Big Five personality analyst grounded in psychometrics\n\n2. Core Mission:\nYou will receive chat records between the user and the persona profile constructor. Based on these records, you must conduct a professional Big Five personality analysis.\n\n3. Working Language:\nMaintain consistency with the primary language of the input report. If the language cannot be determined, default to English.\n\n4. Working Principles:\nThe analysis must strictly follow the Big Five framework:\n\n- Openness to Experience: Measures openness to new experiences, ideas, and emotions.\n- Conscientiousness: Reflects responsibility, organization, and planning ability.\n- Extraversion: Represents activity level and energy in social contexts.\n- Agreeableness: Reflects friendliness, empathy, and cooperativeness.\n- Emotional Stability: Measures emotional regulation and stability.\n\nCore analytical rules:\n- All traits exist on continuous spectra; avoid binary judgments.\n- Scores reflect long-term behavioral and emotional tendencies.\n- Clearly distinguish stable personality traits from situational reactions.\n\nAnalysis Structure:\n- Overall Overview: 2-3 sentences summary.\n- Trait-by-Trait Analysis: Each dimension with Label, Score (1-100), Evidence & Explanation.\n- Interaction Analysis: How traits dynamically interact.\n- Overall Evaluation: Core personality profile summary.\n\nOutput Requirements:\n- Plain text only.\n- Provide a 1-100 numerical score for each trait.",
+        "model": "gpt-4.1",
+        "temperature": 0.3
+      },
+       "input_mapping": {
+        "source": "user_history_chat_list",
+        "format": "chat_history"
+      },
+      "output_mapping": {
+        "target": "analysis_results",
+        "mode": "append"
+      }
+    },
+    {
+      "name": "mbti",
+      "type": "llm",
+      "config": {
+        "system_prompt": "1. Role: A professional MBTI personality type analyst\n\n2. Core Mission:\nAnalyze the user's MBTI type based on chat records.\n\n3. Working Language: Match input language, default English.\n\n4. Framework:\n- E/I: Energy source\n- S/N: Information processing\n- T/F: Decision-making\n- J/P: Lifestyle preference\n\nAnalysis Structure:\n- Overall Overview with four-letter type\n- Dimension-by-Dimension Analysis with evidence\n- Cognitive Function Analysis\n- Overall Evaluation\n\nOutput Requirements:\n- Plain text only.\n- Clearly state the four-letter MBTI type (e.g., INTJ, ENFP).",
+        "model": "gpt-4.1",
+        "temperature": 0.3
+      },
+      "input_mapping": {
+        "source": "user_history_chat_list",
+        "format": "chat_history"
+      },
+      "output_mapping": {
+        "target": "analysis_results",
+        "mode": "append"
+      }
+    },
+    {
+      "name": "clifton",
+      "type": "llm",
+      "config": {
+        "system_prompt": "1. Role: A professional Gallup StrengthsFinder analyst\n\n2. Core Mission:\nIdentify and rank all 34 Gallup talent themes based on chat records.\n\n3. Working Language: Match input language, default English.\n\n4. The 34 Talent Themes (must use exact names):\nExecuting: Achiever, Arranger, Belief, Consistency, Deliberative, Discipline, Focus, Responsibility, Restorative\nInfluencing: Activator, Command, Communication, Competition, Maximizer, Self-Assurance, Significance, Woo\nRelationship Building: Adaptability, Connectedness, Developer, Empathy, Harmony, Includer, Individualization, Positivity, Relator\nStrategic Thinking: Analytical, Context, Futuristic, Ideation, Input, Intellection, Learner, Strategic\n\n5. Analysis Requirements:\n- Analyze evidence for top 10 talents in detail\n- Provide scores (1-100) and ranks (1-34) for ALL 34 talents\n- Higher score = stronger evidence of that talent\n\nOutput Requirements:\n- Plain text analysis\n- Must include all 34 talents with scores and ranks",
+        "model": "gpt-4.1",
+        "temperature": 0.3
+      },
+      "input_mapping": {
+        "source": "user_history_chat_list",
+        "format": "chat_history"
+      },
+      "output_mapping": {
+        "target": "analysis_results",
+        "mode": "append"
+      }
+    },
+    {
+      "name": "integration",
+      "type": "llm",
+      "config": {
+        "system_prompt": "1. Role: Integrated Personality Report Generator\n\n2. Core Mission:\nYou will receive three analysis reports (Big Five, MBTI, Gallup Strengths) for the same user. Generate a structured JSON report following the exact schema.\n\n3. Output Schema Requirements:\n\nidentity:\n- mbti.code: 4-letter MBTI code (e.g., \"INTJ\")\n- mbti.label: MBTI type name in Chinese (e.g., \"战略家\", \"调停者\")\n- core_competencies: List of 3 competencies with id (1-3) and label (Chinese description)\n\npersonality:\n- big_five_scores: openness, conscientiousness, extraversion, agreeableness, stability (all 0-100)\n- summary.title: 7-20 characters Chinese title (e.g., \"安静且理性的探索者\")\n- summary.tags: List of {label, color} where color is hex (e.g., \"#FF6B6B\")\n- summary.description: Detailed Chinese text analysis\n- sub_dimensions: List of 2 SubDimensionVO, each containing metrics list of 2 MetricVO:\n  - MetricVO: metric_type (1 or 2), list_value [int, int] (0-100 each)\n  - metric_type=1: [内敛/观察, 深交/沉着]\n  - metric_type=2: [计划/流程, 实干/经验]\n\nclifton_strengths: List of exactly 34 items, each with:\n- key: Exact talent name from enum (Achiever, Arranger, Belief, Consistency, Deliberative, Discipline, Focus, Responsibility, Restorative, Activator, Command, Communication, Competition, Maximizer, Self-Assurance, Significance, Woo, Adaptability, Connectedness, Developer, Empathy, Harmony, Includer, Individualization, Positivity, Relator, Analytical, Context, Futuristic, Ideation, Input, Intellection, Learner, Strategic)\n- score: 0-100\n- rank: 1-34 (unique, no duplicates)\n\n4. Integration Principles:\n- Extract MBTI code from MBTI report\n- Extract Big Five scores from Big Five report\n- Extract and rank all 34 Gallup talents from Clifton report\n- Generate coherent Chinese descriptions that synthesize all three analyses",
+        "model": "gpt-4.1",
+        "temperature": 0.3,
+        "need_structure_output": true,
+        "output_schema": {
+    "__nested__": {
+      "MbtiVO": {
+        "code": {"type": "str", "description": "MBTI代码，如ENTJ"},
+        "label": {"type": "str", "description": "MBTI类型名称，如指挥官"}
+      },
+      "CoreCompetencyVO": {
+        "id": {"type": "int"},
+        "label": {"type": "str", "description": "能力标签"}
+      },
+      "IdentityVO": {
+        "mbti": {"type": "MbtiVO"},
+        "core_competencies": {"type": "List[CoreCompetencyVO]", "min_length": 3, "max_length": 3}
+      },
+      "BigFiveScoresVO": {
+        "openness": {"type": "int", "ge": 0, "le": 100},
+        "conscientiousness": {"type": "int", "ge": 0, "le": 100},
+        "extraversion": {"type": "int", "ge": 0, "le": 100},
+        "agreeableness": {"type": "int", "ge": 0, "le": 100},
+        "stability": {"type": "int", "ge": 0, "le": 100}
+      },
+      "PersonalityTag": {
+        "label": {"type": "str", "description": "人格标签"},
+        "color": {"type": "str", "description": "Hex颜色值，如#FF6B6B"}
+      },
+      "SummaryVO": {
+        "title": {"type": "str", "min_length": 7, "max_length": 20, "description": "人格特质总结"},
+        "tags": {"type": "List[PersonalityTag]", "min_length": 1, "max_length": 10},
+        "description": {"type": "str", "description": "详细的文本分析"}
+      },
+      "MetricVO": {
+        "metric_type": {"type": "int", "ge": 1, "le": 2, "description": "1=心理能量与社交，2=行动策略与应变"},
+        "list_value": {"type": "List[int]", "min_length": 2, "max_length": 2, "description": "两个0-100的数值"}
+      },
+      "SubDimensionVO": {
+        "metrics": {"type": "List[MetricVO]", "min_length": 2, "max_length": 2, "description": "必须包含2个MetricVO"}
+      },
+      "PersonalityVO": {
+        "big_five_scores": {"type": "BigFiveScoresVO"},
+        "summary": {"type": "SummaryVO"},
+        "sub_dimensions": {"type": "List[SubDimensionVO]", "min_length": 2, "max_length": 2}
+      },
+      "StrengthSimpleVO": {
+        "key": {"type": "str", "description": "才干英文Key，如Strategic"},
+        "score": {"type": "int", "ge": 0, "le": 100, "description": "测评得分"},
+        "rank": {"type": "int", "ge": 1, "le": 34, "description": "排名1-34"}
+      }
+    },
+    "identity": {"type": "IdentityVO"},
+    "personality": {"type": "PersonalityVO"},
+    "clifton_strengths": {"type": "List[StrengthSimpleVO]", "min_length": 34, "max_length": 34, "description": "必须包含全部34种才干"}
+  }
+      },
+      "input_mapping": {
+        "source": "analysis_results",
+        "format": "join"
+      },
+      "output_mapping": {
+        "target": "final_report",
+        "mode": "raw"
+      }
+    }
+  ],
+  "edges": [
+    {"type": "normal", "source": "start", "target": "big_five"},
+    {"type": "normal", "source": "start", "target": "mbti"},
+    {"type": "normal", "source": "start", "target": "clifton"},
+    {"type": "normal", "source": "big_five", "target": "integration"},
+    {"type": "normal", "source": "mbti", "target": "integration"},
+    {"type": "normal", "source": "clifton", "target": "integration"},
+    {"type": "normal", "source": "integration", "target": "END"}
+  ]
+}

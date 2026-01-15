@@ -1,4 +1,8 @@
+from typing import Any
+
 import requests
+from pydantic import BaseModel
+
 from schemas.common.Result import Result
 from schemas.ybbl.ai_school.vo.PersonalityReportVo import TalentReportResponse
 from xiaoyan.rpc.rpc_schemas.XiaoYanDto import GetHistoryChatRequest
@@ -43,7 +47,7 @@ class XiaoYanAPIRPCClient:
 
             # 转换每条聊天记录
             for chat in chat_list:
-                role = "用户" if chat['chatType'] == 1 else "人格画像构建师"
+                role = "user" if chat['chatType'] == 1 else "assistant"
                 chat_history.append(ChatMessage(
                     role=role,
                     content=chat['content']
@@ -63,17 +67,17 @@ class XiaoYanAPIRPCClient:
             data=user_history_chat_list
         )
 
-    async def submit_user_profile(self, profile: TalentReportResponse) -> Result:
+    async def submit_user_profile(self, profile: Any) -> Result:
         """提交用户画像到后端"""
         url = f"{self.base_url}/xiaozhi/we1yess/analyze-profile"
 
         # by_alias=True 会自动将 snake_case 转换为 camelCase
-        payload = profile.model_dump(by_alias=True, exclude_none=True)
+        # payload = profile.model_dump(by_alias=False, exclude_none=True)
 
         response = requests.post(
             url,
             headers=self.headers,
-            json=payload
+            json=profile
         )
         response.raise_for_status()
 

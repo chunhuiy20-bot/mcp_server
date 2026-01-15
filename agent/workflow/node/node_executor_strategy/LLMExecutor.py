@@ -23,6 +23,42 @@ class LLMExecutor(NodeExecutor):
     def _get_output_schema(self, config: LLMConfig) -> BaseModel:
         """获取输出结构"""
         output_schema = dynamic_model_factory.create(config=config.output_schema, model_name="CustomOutputModel")
+        # ========== 调试代码：检查模型结构 ==========
+        print("\n" + "=" * 50)
+        print("📋 生成的 Pydantic 模型结构:")
+        print("=" * 50)
+
+        # 1. 打印模型名称
+        print(f"模型名称: {output_schema.__name__}")
+
+        # 2. 打印所有字段及其类型
+        print("\n字段列表:")
+        for field_name, field_info in output_schema.model_fields.items():
+            print(f"  - {field_name}: {field_info.annotation}")
+            if field_info.description:
+                print(f"    描述: {field_info.description}")
+
+        # 3. 打印完整的 JSON Schema（最详细）
+        print("\n完整 JSON Schema:")
+        import json
+        schema = output_schema.model_json_schema()
+        print(json.dumps(schema, indent=2, ensure_ascii=False))
+
+        # 4. 检查嵌套模型的字段类型
+        print("\n嵌套字段详细检查:")
+        if hasattr(output_schema, 'model_fields'):
+            identity_field = output_schema.model_fields.get('identity')
+            if identity_field:
+                print(f"  identity 类型: {identity_field.annotation}")
+                # 检查 identity 的子字段
+                if hasattr(identity_field.annotation, 'model_fields'):
+                    print(f"  identity 子字段:")
+                    for sub_name, sub_field in identity_field.annotation.model_fields.items():
+                        print(f"    - {sub_name}: {sub_field.annotation}")
+
+        print("=" * 50 + "\n")
+        # ========== 调试代码结束 ==========
+
         return output_schema
 
     def _handle_input_data(self, input_data: Any, config: LLMConfig) -> list:
@@ -56,6 +92,7 @@ class LLMExecutor(NodeExecutor):
                 temperature=config.temperature,
                 response_format=self._get_output_schema(config)
             )
+            print("格式化输出")
             print(response.choices[0].message.parsed)
             return response.choices[0].message.parsed
         else:
@@ -64,5 +101,6 @@ class LLMExecutor(NodeExecutor):
                 messages=messages,
                 temperature=config.temperature
             )
+            print("非格式化输出")
             print(response.choices[0].message.content)
             return response.choices[0].message.content
