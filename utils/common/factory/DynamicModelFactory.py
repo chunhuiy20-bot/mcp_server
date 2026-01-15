@@ -12,6 +12,7 @@ import re
 class DynamicModelFactory:
     """动态模型工厂类"""
 
+    # 基础类型映射
     BASE_TYPE_MAPPING: Dict[str, Type] = {
         "str": str,
         "string": str,
@@ -24,6 +25,7 @@ class DynamicModelFactory:
         "any": Any,
     }
 
+    # 复杂类型映射
     COMPLEX_TYPE_MAPPING: Dict[str, Type] = {
         "List[str]": List[str],
         "List[int]": List[int],
@@ -82,7 +84,36 @@ class DynamicModelFactory:
 
     @classmethod
     def _build_field(cls, field_config: Dict[str, Any], nested_models: Dict[str, Type[BaseModel]] = None) -> tuple:
-        """构建字段定义"""
+        """
+        核心功能: 处理配置文件中定义Pydantic模型的字段，转为元祖
+            1、核心点：动态创建Pydantic模型
+                create_model 方法是Pydantic 包提供的一个动态创建Pydantic模型的方法
+                例如:
+                class User(BaseModel):
+                    name: str = Field(description="用户名")
+                    age: int = Field(default=0, ge=0)
+                等价于
+                User = create_model(
+                    "User",
+                    name=(str, Field(description="用户名")),      # 元组：(类型, Field)
+                    age=(int, Field(default=0, ge=0))              # 元组：(类型, Field)
+                )
+            2、核心点：处理内联情况兼容 (即在类内定义类，一般不推荐，结构不够清晰)
+            {
+              "user": {
+                "type": "object",
+                "properties": {
+                  "name": {"type": "str"},
+                  "age": {"type": "int"}
+                }
+              }
+            }
+
+        field_config: 单个字段的配置
+        nested_models: 已创建的嵌套模型字典
+        如: field_config:{'type': 'List[Product]', 'description': '商品列表', 'required': True} nested_models:{'Address': <class '__main__.Address'>, 'Product': <class '__main__.Product'>}
+        """
+
         type_str = field_config.get("type", "str")
 
         # 检查是否是内联对象定义
@@ -118,8 +149,7 @@ class DynamicModelFactory:
         return field_type, Field(**field_kwargs)
 
     @classmethod
-    def _create_inline_model(cls, properties: Dict[str, Any], nested_models: Dict[str, Type[BaseModel]] = None) -> Type[
-        BaseModel]:
+    def _create_inline_model(cls, properties: Dict[str, Any], nested_models: Dict[str, Type[BaseModel]] = None) -> Type[BaseModel]:
         """创建内联对象模型（严格模式）"""
         fields = {}
         for field_name, field_config in properties.items():
@@ -145,21 +175,35 @@ class DynamicModelFactory:
             use_cache: bool = False,
             strict_mode: bool = True
     ) -> Type[BaseModel]:
+        """
+        核心功能: 把工作流配置文件中output_schema需要的转为Pydantic 模型。OpenAI 的 chat.completions.parse 需要传入一个 Pydantic 模型来定义输出结构。但是这个方法不仅可以用于这里，可以用于其他地方
+        :param config:  配置文件中的output_schema
+        :param model_name: Pydantic 模型名称
+        :param model_doc: Pydantic 模型介绍
+        :param use_cache: 是否缓存这个模型
+        :param strict_mode: 是否允许额外字段【LLM模型需要的是严格模式】
+        :return: 返回 Pydantic 模型
+        """
+        # 如果传入的是符合json的字符串形式，将其转为json
         if isinstance(config, str):
             config = json.loads(config)
 
-        config = config.copy()
 
+        config = config.copy()
+        # cache_key：模型名 + 配置哈希 作为缓存 key,避免重复加载,相同配置不重复创建模型，提升性能
         cache_key = f"{model_name}_{hash(json.dumps(config, sort_keys=True))}"
         if use_cache and cache_key in cls._model_cache:
             return cls._model_cache[cache_key]
 
+        # 添加Pydantic模型描述
         if model_doc is None:
             model_doc = config.pop("__doc__", None)
 
         # 处理 __nested__ 定义的嵌套模型
         nested_models: Dict[str, Type[BaseModel]] = {}
         nested_config = config.pop("__nested__", {})
+
+        # 递归处理嵌套字段
         for nested_name, nested_fields in nested_config.items():
             nested_models[nested_name] = cls.create(
                 nested_fields,
@@ -189,7 +233,7 @@ class DynamicModelFactory:
 
         if use_cache:
             cls._model_cache[cache_key] = model
-
+        print(f"pydantic model:{model}")
         return model
 
     @classmethod
@@ -235,7 +279,7 @@ if __name__ == "__main__":
     }
 
     Output = DynamicModelFactory.create(user_config, "OutputModel", "订单模型")
-    print(json.dumps(Output.model_json_schema(), indent=2, ensure_ascii=False))
+    # print(json.dumps(Output.model_json_schema(), indent=2, ensure_ascii=False))
     order = Output(
         order_id="ORD001",
         address={"city": "北京", "street": "朝阳区xxx路"},
@@ -273,4 +317,3 @@ if __name__ == "__main__":
     user = UserModel(name="张三", age=25, email="zhangsan@example.com")
     print("基础示例:")
     print(user)
-    print()

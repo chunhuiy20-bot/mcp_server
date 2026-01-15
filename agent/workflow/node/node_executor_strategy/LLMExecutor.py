@@ -7,6 +7,7 @@ from agent.workflow.node.node_executor_strategy.NodeExecutor import NodeExecutor
 from utils.common.factory.DynamicModelFactory import dynamic_model_factory
 
 
+# noinspection PyMethodMayBeStatic
 class LLMExecutor(NodeExecutor):
     """LLM 执行器"""
 
@@ -19,13 +20,12 @@ class LLMExecutor(NodeExecutor):
             self.client = AsyncOpenAI(api_key=config.openai_api_key, base_url=config.openai_api_base)
         return self.client
 
-    # noinspection PyMethodMayBeStatic
     def _get_output_schema(self, config: LLMConfig) -> BaseModel:
         """获取输出结构"""
         output_schema = dynamic_model_factory.create(config=config.output_schema, model_name="CustomOutputModel")
         return output_schema
 
-    def _handle_input_data(self, input_data: Any, config: LLMConfig)->list:
+    def _handle_input_data(self, input_data: Any, config: LLMConfig) -> list:
         """处理输入的消息"""
         messages = [{"role": "system", "content": config.system_prompt}]
 
@@ -66,4 +66,3 @@ class LLMExecutor(NodeExecutor):
             )
             print(response.choices[0].message.content)
             return response.choices[0].message.content
-
