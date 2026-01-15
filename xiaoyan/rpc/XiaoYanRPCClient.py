@@ -72,12 +72,12 @@ class XiaoYanAPIRPCClient:
         url = f"{self.base_url}/xiaozhi/we1yess/analyze-profile"
 
         # by_alias=True 会自动将 snake_case 转换为 camelCase
-        # payload = profile.model_dump(by_alias=False, exclude_none=True)
+        payload = profile.model_dump(by_alias=False, exclude_none=True)
 
         response = requests.post(
             url,
             headers=self.headers,
-            json=profile
+            json=payload
         )
         response.raise_for_status()
 

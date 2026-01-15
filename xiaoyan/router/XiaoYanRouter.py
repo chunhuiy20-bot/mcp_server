@@ -77,7 +77,8 @@ async def start_report_scheduled_Task_func2():
             print(data)
             t = TalentReportResponse(**data)
             print(t)
-            print(await xiao_yan_api_rpc_client.submit_user_profile(profile=data))
+            print(type(t))
+            print(await xiao_yan_api_rpc_client.submit_user_profile(profile=t))
 
 
     print(f"处理完成: 成功 {success_count}/{len(report_results)}")

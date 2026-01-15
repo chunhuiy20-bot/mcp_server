@@ -77,57 +77,57 @@
         "temperature": 0.3,
         "need_structure_output": true,
         "output_schema": {
-    "__nested__": {
-      "MbtiVO": {
-        "code": {"type": "str", "description": "MBTI代码，如ENTJ"},
-        "label": {"type": "str", "description": "MBTI类型名称，如指挥官"}
-      },
-      "CoreCompetencyVO": {
-        "id": {"type": "int"},
-        "label": {"type": "str", "description": "能力标签"}
-      },
-      "IdentityVO": {
-        "mbti": {"type": "MbtiVO"},
-        "core_competencies": {"type": "List[CoreCompetencyVO]", "min_length": 3, "max_length": 3}
-      },
-      "BigFiveScoresVO": {
-        "openness": {"type": "int", "ge": 0, "le": 100},
-        "conscientiousness": {"type": "int", "ge": 0, "le": 100},
-        "extraversion": {"type": "int", "ge": 0, "le": 100},
-        "agreeableness": {"type": "int", "ge": 0, "le": 100},
-        "stability": {"type": "int", "ge": 0, "le": 100}
-      },
-      "PersonalityTag": {
-        "label": {"type": "str", "description": "人格标签"},
-        "color": {"type": "str", "description": "Hex颜色值，如#FF6B6B"}
-      },
-      "SummaryVO": {
-        "title": {"type": "str", "min_length": 7, "max_length": 20, "description": "人格特质总结"},
-        "tags": {"type": "List[PersonalityTag]", "min_length": 1, "max_length": 10},
-        "description": {"type": "str", "description": "详细的文本分析"}
-      },
-      "MetricVO": {
-        "metric_type": {"type": "int", "ge": 1, "le": 2, "description": "1=心理能量与社交，2=行动策略与应变"},
-        "list_value": {"type": "List[int]", "min_length": 2, "max_length": 2, "description": "两个0-100的数值"}
-      },
-      "SubDimensionVO": {
-        "metrics": {"type": "List[MetricVO]", "min_length": 2, "max_length": 2, "description": "必须包含2个MetricVO"}
-      },
-      "PersonalityVO": {
-        "big_five_scores": {"type": "BigFiveScoresVO"},
-        "summary": {"type": "SummaryVO"},
-        "sub_dimensions": {"type": "List[SubDimensionVO]", "min_length": 2, "max_length": 2}
-      },
-      "StrengthSimpleVO": {
-        "key": {"type": "str", "description": "才干英文Key，如Strategic"},
-        "score": {"type": "int", "ge": 0, "le": 100, "description": "测评得分"},
-        "rank": {"type": "int", "ge": 1, "le": 34, "description": "排名1-34"}
-      }
-    },
-    "identity": {"type": "IdentityVO"},
-    "personality": {"type": "PersonalityVO"},
-    "clifton_strengths": {"type": "List[StrengthSimpleVO]", "min_length": 34, "max_length": 34, "description": "必须包含全部34种才干"}
-  }
+          "__nested__": {
+            "MbtiVO": {
+              "code": {"type": "str", "description": "MBTI代码"},
+              "label": {"type": "str", "description": "MBTI类型名称"}
+            },
+            "CoreCompetencyVO": {
+              "id": {"type": "int"},
+              "label": {"type": "str"}
+            },
+            "IdentityVO": {
+              "mbti": {"type": "MbtiVO"},
+              "core_competencies": {"type": "List[CoreCompetencyVO]"}
+            },
+            "BigFiveScoresVO": {
+              "openness": {"type": "int", "ge": 0, "le": 100},
+              "conscientiousness": {"type": "int", "ge": 0, "le": 100},
+              "extraversion": {"type": "int", "ge": 0, "le": 100},
+              "agreeableness": {"type": "int", "ge": 0, "le": 100},
+              "stability": {"type": "int", "ge": 0, "le": 100}
+            },
+            "PersonalityTag": {
+              "label": {"type": "str"},
+              "color": {"type": "str"}
+            },
+            "SummaryVO": {
+              "title": {"type": "str", "min_length": 7, "max_length": 20},
+              "tags": {"type": "List[PersonalityTag]"},
+              "description": {"type": "str"}
+            },
+            "MetricVO": {
+              "metric_type": {"type": "int", "ge": 1, "le": 2},
+              "list_value": {"type": "List[int]"}
+            },
+            "SubDimensionVO": {
+              "metrics": {"type": "List[MetricVO]"}
+            },
+            "PersonalityVO": {
+              "big_five_scores": {"type": "BigFiveScoresVO"},
+              "summary": {"type": "SummaryVO"},
+              "sub_dimensions": {"type": "List[SubDimensionVO]"}
+            },
+            "StrengthSimpleVO": {
+              "key": {"type": "str"},
+              "score": {"type": "int"},
+              "rank": {"type": "int"}
+            }
+          },
+          "identity": {"type": "IdentityVO"},
+          "personality": {"type": "PersonalityVO"},
+          "clifton_strengths": {"type": "List[StrengthSimpleVO]"}
+        }
       },
       "input_mapping": {
         "source": "analysis_results",
