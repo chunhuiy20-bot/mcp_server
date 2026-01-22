@@ -273,7 +273,7 @@ async def main4():
 
         request_dto = ChatRequestDTO(
             messages=[
-                Message(role="user", content="你帮我算算，我问了几遍了")
+                Message(role="user", content="使用task")
             ],
             intent="",
             output=""

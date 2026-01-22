@@ -37,8 +37,8 @@ class AgentChatHistoryDTO(BaseModel):
 class UserChatHistoryDto(BaseModel):
     """用户测试数据传输对象"""
 
-    user_id: str = Field(..., description="用户ID")
-    chat_history_list: List[AgentChatHistoryDTO] = Field(..., description="聊天记录列表")
+    user_id: str = Field(..., alias="userId", description="用户ID")
+    chat_history_list: List[AgentChatHistoryDTO] = Field(..., alias="chatHistoryList", description="聊天记录列表")
 
     class Config:
         populate_by_name = True

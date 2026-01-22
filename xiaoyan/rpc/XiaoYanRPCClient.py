@@ -65,11 +65,18 @@ class XiaoYanAPIRPCClient:
 
     async def submit_user_profile(self, profile: Any) -> Result:
         """提交用户画像到后端"""
-        url = f"{self.base_url}/xiaozhi/we1yess/analyze-profile"
+        url = f"{self.base_url}/api/xy-ai/yanyu/analyze-profile"
 
-        # by_alias=True 会自动将 snake_case 转换为 camelCase
-        payload = profile.model_dump(by_alias=False, exclude_none=True)
-
+        # 如果是 Pydantic 模型，转换为字典；如果已经是字典，直接使用
+        if hasattr(profile, 'model_dump'):
+            # by_alias=True: snake_case -> camelCase
+            # mode='json': 枚举转为字符串值
+            payload = profile.model_dump(by_alias=True, exclude_none=True, mode='json')
+        else:
+            payload = profile
+        
+        print("处理数据格式")
+        print(payload)
         response = requests.post(
             url,
             headers=self.headers,
@@ -87,7 +94,7 @@ class XiaoYanAPIRPCClient:
 
 # 使用
 xiao_yan_api_rpc_client = XiaoYanAPIRPCClient(
-    base_url="http://47.107.82.252:8002",
+    base_url="http://127.0.0.1:9001",
     token="2a315992-6278-4bfb-ad34-62644953a725"
 )
 

@@ -167,12 +167,18 @@ async def handle_assessment_completed_history_message(user_chat_history_dto: Use
         role = "user" if chat.chat_type == 1 else "assistant"
         user_history_chat_list.append(ChatMessage(
             role=role,
-            content=chat['content']
+            content=chat.content
         ))
     user_id = user_chat_history_dto.user_id
     res = await persona_constructor_workflow.run(user_history_chat_list, user_id)
+    print("=========================================================================")
+    print(res.code)
+    print(res.data)
+    print(type(res.data))
+
     if res.code == 200:
-        xiao_yan_api_rpc_client.submit_user_profile(res.data)
+        res2 = await xiao_yan_api_rpc_client.submit_user_profile(res.data)
+        print(res2)
 
 if __name__ == "__main__":
     import asyncio

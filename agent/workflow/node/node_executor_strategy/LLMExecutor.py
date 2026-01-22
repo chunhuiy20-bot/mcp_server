@@ -65,6 +65,9 @@ class LLMExecutor(NodeExecutor):
         """处理输入的消息"""
         messages = [{"role": "system", "content": config.system_prompt}]
 
+        print(f"\n[DEBUG] _handle_input_data 接收到的 input_data 类型: {type(input_data)}")
+        print(f"[DEBUG] input_data 内容: {input_data}")
+
         # 处理不同输入格式
         if isinstance(input_data, dict):
             # 从 state 提取消息历史
@@ -73,12 +76,27 @@ class LLMExecutor(NodeExecutor):
                     role = "assistant" if "AI" in msg.__class__.__name__ else "user"
                     messages.append({"role": role, "content": msg.content})
                 elif isinstance(msg, dict):
-                    messages.append(msg)
+                    # 确保 role 和 content 存在且不为空
+                    if msg.get("role") and msg.get("content") is not None:
+                        messages.append(msg)
+                    else:
+                        print(f"[WARNING] 跳过无效消息: {msg}")
         elif isinstance(input_data, str):
             messages.append({"role": "user", "content": input_data})
         elif isinstance(input_data, list):
-            messages.extend(input_data)
+            # 处理列表格式的消息
+            for msg in input_data:
+                if isinstance(msg, dict):
+                    # 确保 role 和 content 存在且不为空
+                    if msg.get("role") and msg.get("content") is not None:
+                        messages.append(msg)
+                    else:
+                        print(f"[WARNING] 跳过无效消息: {msg}")
+                elif hasattr(msg, "content"):
+                    role = "assistant" if "AI" in msg.__class__.__name__ else "user"
+                    messages.append({"role": role, "content": msg.content})
 
+        print(f"[DEBUG] 最终构造的 messages: {messages}\n")
         return messages
 
     async def execute(self, input_data: Any, config: LLMConfig) -> Any:
