@@ -1,10 +1,6 @@
 from typing import Any
-
 import requests
-from pydantic import BaseModel
-
 from schemas.common.Result import Result
-from schemas.ybbl.ai_school.vo.PersonalityReportVo import TalentReportResponse
 from xiaoyan.rpc.rpc_schemas.XiaoYanDto import GetHistoryChatRequest
 from xiaoyan.rpc.rpc_schemas.XiaoYanVo import UserHistoryChatList, ChatMessage, GetHistoryChatResponse
 

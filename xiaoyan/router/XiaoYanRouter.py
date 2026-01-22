@@ -2,19 +2,16 @@
     通用ai服务api
     对于服务最好原子化，方便调用和管理，避免不必要的耦合
 """
-import json
-from typing import Any
-
 from fastapi import Request
 from fastapi import Query
-from langgraph.graph.state import CompiledStateGraph
-
 from config.router.CustomRouter import CustomAPIRouter
 from schemas.common.Result import Result
 from schemas.ybbl.ai_school.vo.PersonalityReportVo import TalentReportResponse
 from xiaoyan.agent.workflow.PersonaConstructorWorkflow import persona_constructor_workflow
 from xiaoyan.agent.workflow2.CommonWorkflow import CreateWorkflowDto, common_workflow
 from xiaoyan.rpc.XiaoYanRPCClient import xiao_yan_api_rpc_client
+from xiaoyan.rpc.rpc_schemas.XiaoYanDto import UserChatHistoryDto
+from xiaoyan.rpc.rpc_schemas.XiaoYanVo import ChatMessage
 
 router = CustomAPIRouter(
     prefix="/api/ai/xiaoyan",
@@ -22,13 +19,7 @@ router = CustomAPIRouter(
 )
 
 
-async def start_report_scheduled_Task_func():
-    print(f"[定时任务] 开启定时获取聊天记录并总结报告任务...")
-    print(await persona_constructor_workflow.report_scheduled_Task())
-
-
-
-
+# 测试
 async def start_report_scheduled_Task_func2():
     """
     配置驱动的工作流编译器的方式执行定时任务
@@ -84,10 +75,10 @@ async def start_report_scheduled_Task_func2():
     print(f"处理完成: 成功 {success_count}/{len(report_results)}")
 
 
-
-if __name__ == "__main__":
-    import asyncio
-    asyncio.run(start_report_scheduled_Task_func2())
+# 已经使用
+async def start_report_scheduled_Task_func():
+    print(f"[定时任务] 开启定时获取聊天记录并总结报告任务...")
+    print(await persona_constructor_workflow.report_scheduled_Task())
 
 
 @router.post(path="/scheduler/start_report_scheduled_Task",
@@ -162,3 +153,27 @@ async def remove_job(request: Request, job_id: str = Query(default="cleanup_expi
             "job_id": job_id
         }
     )
+
+@router.post(
+    path="/assessment/completed/history",
+    summary="接受小智与用户心理测试完成后的对话数据",
+    description="接受小智与用户心理测试完成后的对话数据,处理完成后，提交到另一个接口"
+)
+async def handle_assessment_completed_history_message(user_chat_history_dto: UserChatHistoryDto):
+    print(f"接收到了用户-{user_chat_history_dto.user_id} 的聊天记录")
+    # 处理数据 list[ChatMessage]
+    user_history_chat_list = []
+    for chat in user_chat_history_dto.chat_history_list:
+        role = "user" if chat.chat_type == 1 else "assistant"
+        user_history_chat_list.append(ChatMessage(
+            role=role,
+            content=chat['content']
+        ))
+    user_id = user_chat_history_dto.user_id
+    res = await persona_constructor_workflow.run(user_history_chat_list, user_id)
+    if res.code == 200:
+        xiao_yan_api_rpc_client.submit_user_profile(res.data)
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(start_report_scheduled_Task_func2())

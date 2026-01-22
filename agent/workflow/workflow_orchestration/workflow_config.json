@@ -3,7 +3,7 @@
   "description": "智能对话工作流",
   "state_schema": {
     "messages": {"type": "list", "reducer": "add_messages"},
-    "intent": {"type": "str"},
+    "intent": {"type": "int"},
     "output": {"type": "str"}
   },
   "entry_point": "intent_classifier",
@@ -12,12 +12,12 @@
       "name": "intent_classifier",
       "type": "llm",
       "config": {
-        "system_prompt": "分析用户意图，只返回以下类型之一: question, chat, task",
+        "system_prompt": "分析用户意图，只返回以下数字类型之一: 1, 2, 3",
         "model": "gpt-4.1",
         "temperature": 0.0,
         "need_structure_output": true,
         "output_schema": {
-          "intent": {"type": "str", "description": "意图类型: question/chat/task"}
+          "intent": {"type": "int", "description": "意图类型: question：1，chat：2， task：3"}
         }
       }
     },
@@ -51,12 +51,20 @@
     {
       "type": "conditional",
       "source": "intent_classifier",
-      "condition_field": "intent",
-      "condition_map": {
-        "question": "question_handler",
-        "chat": "chat_handler",
-        "task": "task_handler"
-      },
+      "conditions": [
+        {
+          "expression": "intent == 1",
+          "target": "question_handler"
+        },
+        {
+          "expression": "intent == 2",
+          "target": "chat_handler"
+        },
+        {
+          "expression": "intent == 3",
+          "target": "task_handler"
+        }
+      ],
       "default": "chat_handler"
     },
     {"type": "normal", "source": "question_handler", "target": "END"},

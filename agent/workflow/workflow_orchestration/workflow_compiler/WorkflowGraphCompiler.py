@@ -295,6 +295,9 @@ class WorkflowGraphCompiler:
         編排节点之间边的关系
         核心功能：加载配置文件的edges上边的列表
             1、编排节点之间边的关系，目前边有两种类型，正常的边(normal)与条件边(conditional)
+            2、条件边支持两种模式：
+                - 简单值映射模式：使用 condition_field + condition_map（向后兼容）
+                - 表达式模式：使用 conditions 列表（支持复杂逻辑判断）
         """
         for edge_cfg in self.config.edges:
             edge_type = edge_cfg.get("type", "normal")
@@ -309,30 +312,115 @@ class WorkflowGraphCompiler:
 
             elif edge_type == "conditional":
                 source = edge_cfg["source"]
-                condition_field = edge_cfg["condition_field"]
-                condition_map = edge_cfg["condition_map"]
                 default = edge_cfg.get("default", "END")
-
-                # 处理 END 映射，包含所有可能的目标
-                resolved_map = {}
-                for k, v in condition_map.items():
-                    resolved_map[k] = END if v == "END" else v
-
-                # 确保 default 也在映射中
                 default_target = END if default == "END" else default
 
-                def make_router(condition_key: str, mapping: dict, default_val):
-                    def router(state: dict) -> str:
-                        value = state.get(condition_key)
-                        return mapping.get(value, default_val)
-                    return router
+                # 判断使用哪种条件路由模式
+                if "conditions" in edge_cfg:
+                    # 新模式：表达式判断列表
+                    conditions = edge_cfg["conditions"]
+                    router = self._create_expression_router(conditions, default_target)
 
-                # 收集所有可能的目标节点
-                all_targets = list(set(resolved_map.values()) | {default_target})
+                    # 收集所有可能的目标节点
+                    all_targets = [
+                        END if c["target"] == "END" else c["target"]
+                        for c in conditions
+                    ]
+                    all_targets.append(default_target)
+
+                else:
+                    # 旧模式：简单值映射（保持向后兼容）
+                    condition_field = edge_cfg["condition_field"]
+                    condition_map = edge_cfg["condition_map"]
+
+                    # 处理 END 映射
+                    resolved_map = {}
+                    for k, v in condition_map.items():
+                        resolved_map[k] = END if v == "END" else v
+
+                    router = self._create_value_router(condition_field, resolved_map, default_target)
+                    all_targets = list(resolved_map.values())
+                    all_targets.append(default_target)
+
+                # 去重并创建路径映射
+                all_targets = list(set(all_targets))
                 path_map = {t: t for t in all_targets}
 
-                self._graph.add_conditional_edges(
-                    source,
-                    make_router(condition_field, resolved_map, default_target),
-                    path_map
-                )
+                self._graph.add_conditional_edges(source, router, path_map)
+
+
+    def _create_value_router(self, condition_field: str, mapping: dict, default_val):
+        """
+        简单值映射路由器（旧模式，向后兼容）
+        支持类型智能转换，避免类型不匹配问题
+        """
+
+        def router(state: dict) -> str:
+            value = state.get(condition_field)
+
+            # 1. 直接匹配
+            if value in mapping:
+                return mapping[value]
+
+            # 2. 字符串化匹配（处理 JSON 配置 key 是字符串的情况）
+            if str(value) in mapping:
+                return mapping[str(value)]
+
+            # 3. 布尔值特殊处理
+            if isinstance(value, bool):
+                bool_key = "true" if value else "false"
+                if bool_key in mapping:
+                    return mapping[bool_key]
+                # 也尝试首字母大写的形式
+                bool_key_cap = "True" if value else "False"
+                if bool_key_cap in mapping:
+                    return mapping[bool_key_cap]
+
+            # 4. 返回默认值
+            return default_val
+
+        return router
+
+
+    def _create_expression_router(self, conditions: list, default_val):
+        """
+        表达式判断路由器（新模式）
+        支持复杂的条件表达式，如：
+            - 数值比较：score > 80, count >= 5
+            - 字符串比较：status == "success"
+            - 布尔判断：is_valid == True
+            - 复合条件：score > 80 and retry_count < 3
+
+        安全性说明：
+            - 使用受限的 eval 环境，只允许访问 state 中的变量
+            - 禁用 __builtins__，防止执行危险函数
+            - 建议在生产环境中使用更安全的表达式解析库（如 simpleeval）
+        """
+
+        def router(state: dict) -> str:
+            for condition in conditions:
+                expr = condition["expression"]
+                target = END if condition["target"] == "END" else condition["target"]
+
+                try:
+                    # 创建安全的评估环境
+                    # 只包含 state 中的变量，禁用所有内置函数
+                    eval_context = {**state}
+
+                    # 评估表达式
+                    if eval(expr, {"__builtins__": {}}, eval_context):
+                        return target
+
+                except KeyError as e:
+                    # state 中缺少表达式引用的字段
+                    print(f"[WARNING] 条件表达式字段不存在: {expr}, 缺少字段: {e}")
+                    continue
+                except Exception as e:
+                    # 其他错误（语法错误、类型错误等）
+                    print(f"[ERROR] 条件表达式评估失败: {expr}, 错误: {type(e).__name__}: {e}")
+                    continue
+
+            # 所有条件都不满足，返回默认值
+            return default_val
+
+        return router

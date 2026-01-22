@@ -1,4 +1,6 @@
 # 将多个节点编译成图/工作流
+import asyncio
+
 from langgraph.graph import StateGraph, END
 from typing import TypedDict, Annotated, Any
 import operator
@@ -71,7 +73,7 @@ class PersonaConstructorWorkflow:
     # noinspection PyMethodMayBeStatic
     async def _start_node(self, state: State) -> State:
         """起始节点 - 初始化"""
-        print("开始人格分析工作流...")
+        print(f"开始人格分析工作流...{state}")
         return {"analysis_results": []}
 
     async def _big_five_analysis(self, state: State) -> State:
@@ -170,24 +172,3 @@ class PersonaConstructorWorkflow:
 
 
 persona_constructor_workflow = PersonaConstructorWorkflow()
-
-# 使用示例
-async def main():
-    # user_history_chat_list: Result[UserHistoryChatList] = await xiao_yan_api_rpc_client.get_history_chat()
-    # print(f"用户id: {user_history_chat_list.data.history_chat_list[0].user_id}")
-    # print(f"用户历史聊天记录: {user_history_chat_list.data.history_chat_list[0].chat_history}")
-
-
-    print(await persona_constructor_workflow.report_scheduled_Task())
-
-    # # 模拟两个不同用户的记录
-    # for i in range(1):
-    #     print(f"第 {i+1} 次运行...")
-    #     report = await workflow.run(user_history_chat_list.data.history_chat_list[0].chat_history)
-    #     print(f"最终报告: {report}")
-
-
-
-if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
