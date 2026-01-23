@@ -6,23 +6,24 @@
       "type": "list",
       "reducer": "add_messages"
     },
-    "intent": {
+    "intention": {
       "type": "str"
     }
   },
-  "entry_point": "intention",
+  "entry_point": "Intention",
   "nodes": [
     {
-      "name": "intention",
+      "name": "Intention",
       "type": "llm",
       "config": {
         "model": "gpt-4",
-        "temperature": 0.8,
-        "system_prompt": "识别用户意图，当用户所task的的时候输出task，否则都是chat",
+        "temperature": 0.7,
+        "system_prompt": "你是一个意图识别助手，帮我识别用户意图，chat|task。当用户说到task的的时候输出task，否则都是chat",
         "need_structure_output": true,
+        "mcp_tools": [],
         "output_schema": {
           "__nested__": {},
-          "intent": {
+          "intention": {
             "type": "str",
             "description": "输出chat或task，只能二选一"
           }
@@ -32,54 +33,44 @@
         "source": "messages"
       },
       "output_mapping": {
-        "target": "intent"
+        "target": "intention"
       }
     },
     {
-      "name": "chat",
+      "name": "Chat",
       "type": "llm",
-      "config": {
-        "model": "gpt-4",
-        "temperature": 0.7,
-        "system_prompt": "你是一号chat智能体，和用户对话的时候，要先表明你是chat",
-        "need_structure_output": false
-      }
+      "config": {}
     },
     {
-      "name": "task",
+      "name": "Task",
       "type": "llm",
-      "config": {
-        "model": "gpt-4",
-        "temperature": 0.7,
-        "system_prompt": "你是一号task智能体，和用户对话的时候，要先表明你是task",
-        "need_structure_output": false
-      }
+      "config": {}
     }
   ],
   "edges": [
     {
       "type": "conditional",
-      "source": "intention",
+      "source": "Intention",
       "conditions": [
         {
-          "expression": "intent.intent == 'chat'",
-          "target": "chat"
+          "expression": "intention equals chat",
+          "target": "Chat"
         },
         {
-          "expression": "intent.intent == 'task'",
-          "target": "task"
+          "expression": "intention equals task",
+          "target": "Task"
         }
       ],
-      "default": "task"
+      "default": "Task"
     },
     {
       "type": "normal",
-      "source": "chat",
+      "source": "Chat",
       "target": "END"
     },
     {
       "type": "normal",
-      "source": "task",
+      "source": "Task",
       "target": "END"
     }
   ]
