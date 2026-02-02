@@ -36,6 +36,32 @@ jobs:
             type=raw,value=latest
             type=sha,prefix={{branch}}-
 
+      - name: Create .env file from secrets
+        run: |
+          cat > .env << EOF
+          # MySQL 配置
+          MYSQL_CONFIG_ASYNC=${{ secrets.MYSQL_CONFIG_ASYNC }}
+          MYSQL_CONFIG_ASYNC2=${{ secrets.MYSQL_CONFIG_ASYNC2 }}
+          MYSQL_CONFIG_ASYNC_FINANCE_DB=${{ secrets.MYSQL_CONFIG_ASYNC_FINANCE_DB }}
+
+          # Redis 配置
+          REDIS_HOST=${{ secrets.REDIS_HOST }}
+          REDIS_PORT=${{ secrets.REDIS_PORT }}
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          REDIS_DB=${{ secrets.REDIS_DB }}
+
+          # OpenAI 配置
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL }}
+          OPENAI_API_KEY2=${{ secrets.OPENAI_API_KEY2 }}
+          OPENAI_BASE_URL2=${{ secrets.OPENAI_BASE_URL2 }}
+
+          # 阿里云 OSS
+          ALIYUN_AK_ID=${{ secrets.ALIYUN_AK_ID }}
+          ALIYUN_AK_SECRET=${{ secrets.ALIYUN_AK_SECRET }}
+          ALIYUN_OSS_ENDPOINT=${{ secrets.ALIYUN_OSS_ENDPOINT }}
+          EOF
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
