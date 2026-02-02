@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  mcp_server:
+    image: ghcr.io/${GITHUB_REPOSITORY}:latest
+    container_name: mcp_server
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # 这些环境变量会从 .env 文件中读取
+      - MYSQL_CONFIG_ASYNC=${MYSQL_CONFIG_ASYNC}
+      - MYSQL_CONFIG_ASYNC2=${MYSQL_CONFIG_ASYNC2}
+      - MYSQL_CONFIG_ASYNC_FINANCE_DB=${MYSQL_CONFIG_ASYNC_FINANCE_DB}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
