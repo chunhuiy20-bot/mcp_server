@@ -48,13 +48,19 @@ jobs:
             # 进入项目目录
             cd $DEPLOY_DIR
 
-            # 拉取最新代码
+            # 拉取最新代码（带重试和fallback）
             echo "拉取最新代码..."
-            git pull origin ${{ github.base_ref }}
+            if ! git pull origin ${{ github.base_ref }}; then
+              echo "git pull 失败，尝试使用 fetch + reset..."
+              git fetch origin ${{ github.base_ref }} && git reset --hard origin/${{ github.base_ref }}
+            fi
 
             # 安装/更新依赖
             echo "安装依赖..."
-            pip install -r requirements.txt
+            if ! pip install -r requirements.txt; then
+              echo "依赖安装失败，停止部署"
+              exit 1
+            fi
 
             # 关闭占用端口的旧进程
             echo "关闭旧进程..."
