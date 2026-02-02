@@ -77,14 +77,17 @@ jobs:
             echo "启动新服务..."
             nohup python -m uvicorn main:app --host 0.0.0.0 --port $APP_PORT > app.log 2>&1 &
 
-            # 等待服务启动
-            sleep 3
+            # 等待服务启动并检查（重试机制）
+            echo "等待服务启动..."
+            for i in {1..10}; do
+              sleep 2
+              NEW_PID=$(lsof -ti:$APP_PORT)
+              if [ ! -z "$NEW_PID" ]; then
+                echo "服务启动成功！PID: $NEW_PID, 端口: $APP_PORT"
+                exit 0
+              fi
+              echo "第 $i 次检查，服务尚未就绪..."
+            done
 
-            # 检查服务是否启动成功
-            NEW_PID=$(lsof -ti:$APP_PORT)
-            if [ ! -z "$NEW_PID" ]; then
-              echo "服务启动成功！PID: $NEW_PID, 端口: $APP_PORT"
-            else
-              echo "服务启动失败，请检查日志"
-              exit 1
-            fi
+            echo "服务启动失败，请检查日志"
+            exit 1
