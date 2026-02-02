@@ -1,71 +1,57 @@
-name: Build and Deploy
+name: Deploy via SSH
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
-  build-and-push:
+  deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: |
+            # 进入项目目录
+            cd ${{ secrets.DEPLOY_PATH }}
 
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest
-            type=sha,prefix={{branch}}-
+            # 拉取最新代码
+            echo "拉取最新代码..."
+            git pull origin main
 
-      - name: Create .env file from secrets
-        run: |
-          cat > .env << EOF
-          # MySQL 配置
-          MYSQL_CONFIG_ASYNC=${{ secrets.MYSQL_CONFIG_ASYNC }}
-          MYSQL_CONFIG_ASYNC2=${{ secrets.MYSQL_CONFIG_ASYNC2 }}
-          MYSQL_CONFIG_ASYNC_FINANCE_DB=${{ secrets.MYSQL_CONFIG_ASYNC_FINANCE_DB }}
+            # 安装/更新依赖
+            echo "安装依赖..."
+            pip install -r requirements.txt
 
-          # Redis 配置
-          REDIS_HOST=${{ secrets.REDIS_HOST }}
-          REDIS_PORT=${{ secrets.REDIS_PORT }}
-          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-          REDIS_DB=${{ secrets.REDIS_DB }}
+            # 关闭占用 8000 端口的旧进程
+            echo "关闭旧进程..."
+            OLD_PID=$(lsof -ti:8000)
+            if [ ! -z "$OLD_PID" ]; then
+              echo "发现旧进程 PID: $OLD_PID，正在关闭..."
+              kill -9 $OLD_PID
+              sleep 2
+            else
+              echo "没有发现占用 8000 端口的进程"
+            fi
 
-          # OpenAI 配置
-          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-          OPENAI_BASE_URL=${{ secrets.OPENAI_BASE_URL }}
-          OPENAI_API_KEY2=${{ secrets.OPENAI_API_KEY2 }}
-          OPENAI_BASE_URL2=${{ secrets.OPENAI_BASE_URL2 }}
+            # 后台启动新服务
+            echo "启动新服务..."
+            nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
 
-          # 阿里云 OSS
-          ALIYUN_AK_ID=${{ secrets.ALIYUN_AK_ID }}
-          ALIYUN_AK_SECRET=${{ secrets.ALIYUN_AK_SECRET }}
-          ALIYUN_OSS_ENDPOINT=${{ secrets.ALIYUN_OSS_ENDPOINT }}
-          EOF
+            # 等待服务启动
+            sleep 3
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+            # 检查服务是否启动成功
+            NEW_PID=$(lsof -ti:8000)
+            if [ ! -z "$NEW_PID" ]; then
+              echo "服务启动成功！PID: $NEW_PID"
+            else
+              echo "服务启动失败，请检查日志"
+              exit 1
+            fi

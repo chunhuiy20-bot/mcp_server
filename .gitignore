@@ -1,4 +1,5 @@
 # 环境变量文件
+.env
 .env.prod
 .env.production
 .env.local
