@@ -35,6 +35,16 @@ jobs:
             echo "部署目录: $DEPLOY_DIR"
             echo "应用端口: $APP_PORT"
 
+            # 检查目录是否存在
+            if [ ! -d "$DEPLOY_DIR" ]; then
+              echo "目录不存在，开始克隆项目..."
+              # 创建父目录
+              mkdir -p "$(dirname "$DEPLOY_DIR")"
+              # 克隆项目
+              git clone -b ${{ github.base_ref }} ${{ github.server_url }}/${{ github.repository }}.git "$DEPLOY_DIR"
+              echo "项目克隆完成"
+            fi
+
             # 进入项目目录
             cd $DEPLOY_DIR
 
