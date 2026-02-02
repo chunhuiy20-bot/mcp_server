@@ -1,5 +1,5 @@
 aiofiles==25.1.0
-aiohttp==3.13.0
+aiohttp==3.13.3
 aliyun_python_sdk_core==2.16.0
 APScheduler==3.11.0
 fastapi==0.128.0
