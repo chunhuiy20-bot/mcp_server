@@ -160,7 +160,7 @@ async def remove_job(request: Request, job_id: str = Query(default="cleanup_expi
     description="接受小智与用户心理测试完成后的对话数据,处理完成后，提交到另一个接口"
 )
 async def handle_assessment_completed_history_message(user_chat_history_dto: UserChatHistoryDto):
-    print(f"接收到了用户-{user_chat_history_dto.user_id} 的聊天记录，v1.2测试")
+    print(f"接收到了用户-{user_chat_history_dto.user_id} 的聊天记录，v1.5测试")
     # 处理数据 list[ChatMessage]
     user_history_chat_list = []
     for chat in user_chat_history_dto.chat_history_list:
