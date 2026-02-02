@@ -1,56 +1,73 @@
-name: Deploy via SSH
+name: Deploy to Environments
 
 on:
-  push:
-    branches: [ main ]
+  pull_request:
+    types: [closed]
+    branches:
+      - dev # 测试环境
+      - main # 正式环境
   workflow_dispatch:
 
 jobs:
   deploy:
+    name: 部署到服务器 (${{ github.base_ref }})
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
 
     steps:
-      - name: Deploy to Server
+      - name: 部署到云服务器
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          host: ${{ github.base_ref == 'dev' && secrets.SERVER_HOST_DEV || secrets.SERVER_HOST }}
+          username: ${{ github.base_ref == 'dev' && secrets.SERVER_USER_DEV || secrets.SERVER_USER }}
+          password: ${{ github.base_ref == 'dev' && secrets.SERVER_PASSWORD_DEV || secrets.SERVER_PASSWORD }}
+          port: ${{ github.base_ref == 'dev' && secrets.SSH_PORT_DEV || secrets.SSH_PORT || 22 }}
           script: |
+            # 根据分支设置部署目录和端口
+            if [ "${{ github.base_ref }}" = "dev" ]; then
+              DEPLOY_DIR="${{ secrets.DEPLOY_PATH_DEV }}"
+              APP_PORT="${{ secrets.APP_PORT_DEV || 8001 }}"
+            else
+              DEPLOY_DIR="${{ secrets.DEPLOY_PATH }}"
+              APP_PORT="${{ secrets.APP_PORT || 8000 }}"
+            fi
+
+            echo "部署目录: $DEPLOY_DIR"
+            echo "应用端口: $APP_PORT"
+
             # 进入项目目录
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd $DEPLOY_DIR
 
             # 拉取最新代码
             echo "拉取最新代码..."
-            git pull origin main
+            git pull origin ${{ github.base_ref }}
 
             # 安装/更新依赖
             echo "安装依赖..."
             pip install -r requirements.txt
 
-            # 关闭占用 8000 端口的旧进程
+            # 关闭占用端口的旧进程
             echo "关闭旧进程..."
-            OLD_PID=$(lsof -ti:8000)
+            OLD_PID=$(lsof -ti:$APP_PORT)
             if [ ! -z "$OLD_PID" ]; then
               echo "发现旧进程 PID: $OLD_PID，正在关闭..."
               kill -9 $OLD_PID
               sleep 2
             else
-              echo "没有发现占用 8000 端口的进程"
+              echo "没有发现占用 $APP_PORT 端口的进程"
             fi
 
             # 后台启动新服务
             echo "启动新服务..."
-            nohup uvicorn main:app --host 0.0.0.0 --port 8000 > app.log 2>&1 &
+            nohup uvicorn main:app --host 0.0.0.0 --port $APP_PORT > app.log 2>&1 &
 
             # 等待服务启动
             sleep 3
 
             # 检查服务是否启动成功
-            NEW_PID=$(lsof -ti:8000)
+            NEW_PID=$(lsof -ti:$APP_PORT)
             if [ ! -z "$NEW_PID" ]; then
-              echo "服务启动成功！PID: $NEW_PID"
+              echo "服务启动成功！PID: $NEW_PID, 端口: $APP_PORT"
             else
               echo "服务启动失败，请检查日志"
               exit 1
